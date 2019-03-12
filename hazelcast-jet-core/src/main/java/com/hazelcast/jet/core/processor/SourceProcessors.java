@@ -30,6 +30,7 @@ import com.hazelcast.jet.function.ConsumerEx;
 import com.hazelcast.jet.function.PredicateEx;
 import com.hazelcast.jet.function.SupplierEx;
 import com.hazelcast.jet.function.ToResultSetFunction;
+import com.hazelcast.jet.function.TriFunction;
 import com.hazelcast.jet.impl.connector.ConvenientSourceP;
 import com.hazelcast.jet.impl.connector.ConvenientSourceP.SourceBufferConsumerSide;
 import com.hazelcast.jet.impl.connector.ReadFilesP;
@@ -341,12 +342,13 @@ public final class SourceProcessors {
             @Nonnull Charset charset,
             @Nonnull String glob,
             boolean sharedFileSystem,
-            @Nonnull BiFunctionEx<? super String, ? super String, ? extends R> mapOutputFn
+            boolean withHeader,
+            @Nonnull TriFunction<? super String, ? super String, ? super String, ? extends R> mapOutputFn
     ) {
         checkSerializable(mapOutputFn, "mapOutputFn");
 
         String charsetName = charset.name();
-        return ReadFilesP.metaSupplier(directory, glob, sharedFileSystem,
+        return ReadFilesP.metaSupplier(directory, glob, sharedFileSystem, withHeader,
                 path -> Files.lines(path, Charset.forName(charsetName)),
                 mapOutputFn);
     }

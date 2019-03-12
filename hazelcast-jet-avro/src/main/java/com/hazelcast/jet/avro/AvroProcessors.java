@@ -56,13 +56,13 @@ public final class AvroProcessors {
             @Nonnull SupplierEx<? extends DatumReader<D>> datumReaderSupplier,
             @Nonnull BiFunctionEx<String, ? super D, T> mapOutputFn
     ) {
-        return ReadFilesP.metaSupplier(directory, glob, sharedFileSystem,
+        return ReadFilesP.metaSupplier(directory, glob, sharedFileSystem, false,
                 path -> {
                     DataFileReader<D> reader = new DataFileReader<>(path.toFile(), datumReaderSupplier.get());
                     return StreamSupport.stream(reader.spliterator(), false)
                                         .onClose(() -> uncheckRun(reader::close));
                 },
-                mapOutputFn);
+                (fileName, header, datum) -> mapOutputFn.applyEx(fileName, datum));
     }
 
     /**

@@ -18,6 +18,7 @@ package com.hazelcast.jet.pipeline;
 
 import com.hazelcast.jet.core.processor.SourceProcessors;
 import com.hazelcast.jet.function.BiFunctionEx;
+import com.hazelcast.jet.function.TriFunction;
 
 import javax.annotation.Nonnull;
 import java.io.File;
@@ -38,6 +39,7 @@ public final class FileSourceBuilder {
 
     private String glob = GLOB_WILDCARD;
     private boolean sharedFileSystem;
+    private boolean withHeader;
     private Charset charset = UTF_8;
 
     /**
@@ -73,6 +75,18 @@ public final class FileSourceBuilder {
     }
 
     /**
+     * Sets if files have a header as the first line. Default
+     * value is {@code false}
+     * <p>
+     * If {@code sharedFileSystem} is {@code true}, Jet will filter out
+     * the first line as header of the file.
+     */
+    public FileSourceBuilder withHeader(boolean withHeader) {
+        this.withHeader = withHeader;
+        return this;
+    }
+
+    /**
      * Sets the character set used to encode the files. Default value is {@link
      * java.nio.charset.StandardCharsets#UTF_8}.
      * <p>
@@ -93,6 +107,15 @@ public final class FileSourceBuilder {
     }
 
     /**
+     * Convenience for {@link FileSourceBuilder#build(TriFunction)} where there
+     * is no header in the files.
+     * See {@link FileSourceBuilder#withHeader(boolean)}.
+     */
+    public <T> BatchSource<T> build(BiFunctionEx<String, String, ? extends T> mapOutputFn) {
+        return build((fileName, header, line) -> mapOutputFn.applyEx(fileName, line));
+    }
+
+    /**
      * Builds a custom file {@link BatchSource} with supplied components and the
      * output function {@code mapOutputFn}.
      * <p>
@@ -106,12 +129,13 @@ public final class FileSourceBuilder {
      * CPU is available).
      *
      * @param mapOutputFn the function which creates output object from each
-     *                    line. Gets the filename and line as parameters
+     *                    line. Gets the filename, the header and line as
+     *                    parameters
      * @param <T> the type of the items the source emits
      */
-    public <T> BatchSource<T> build(BiFunctionEx<String, String, ? extends T> mapOutputFn) {
+    public <T> BatchSource<T> build(TriFunction<String, String, String, ? extends T> mapOutputFn) {
         return batchFromProcessor("filesSource(" + new File(directory, glob) + ')',
-                SourceProcessors.readFilesP(directory, charset, glob, sharedFileSystem, mapOutputFn));
+                SourceProcessors.readFilesP(directory, charset, glob, sharedFileSystem, withHeader, mapOutputFn));
     }
 
     /**

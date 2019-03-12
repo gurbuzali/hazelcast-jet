@@ -19,9 +19,11 @@ package com.hazelcast.jet.impl.connector;
 import com.hazelcast.jet.IListJet;
 import com.hazelcast.jet.JetInstance;
 import com.hazelcast.jet.Util;
-import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.JetTestSupport;
-import com.hazelcast.jet.core.Vertex;
+import com.hazelcast.jet.pipeline.BatchSource;
+import com.hazelcast.jet.pipeline.Pipeline;
+import com.hazelcast.jet.pipeline.Sinks;
+import com.hazelcast.jet.pipeline.Sources;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,9 +36,6 @@ import java.util.Map.Entry;
 import java.util.stream.IntStream;
 
 import static com.hazelcast.jet.Util.entry;
-import static com.hazelcast.jet.core.Edge.between;
-import static com.hazelcast.jet.core.processor.SinkProcessors.writeListP;
-import static com.hazelcast.jet.core.processor.SourceProcessors.readFilesP;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -57,14 +56,14 @@ public class ReadFilesPTest extends JetTestSupport {
 
     @Test
     public void test_smallFiles() throws Exception {
-        DAG dag = buildDag(null);
+        Pipeline p = buildPipeline(null);
 
         File file1 = new File(directory, randomName());
         appendToFile(file1, "hello", "world");
         File file2 = new File(directory, randomName());
         appendToFile(file2, "hello2", "world2");
 
-        instance.newJob(dag).join();
+        instance.newJob(p).join();
 
         assertEquals(4, list.size());
 
@@ -73,27 +72,27 @@ public class ReadFilesPTest extends JetTestSupport {
 
     @Test
     public void test_largeFile() throws Exception {
-        DAG dag = buildDag(null);
+        Pipeline p = buildPipeline(null);
 
         File file1 = new File(directory, randomName());
         final int listLength = 10000;
         appendToFile(file1, IntStream.range(0, listLength).mapToObj(String::valueOf).toArray(String[]::new));
 
-        instance.newJob(dag).join();
+        instance.newJob(p).join();
 
         assertEquals(listLength, list.size());
     }
 
     @Test
     public void when_glob_the_useGlob() throws Exception {
-        DAG dag = buildDag("file2.*");
+        Pipeline p = buildPipeline("file2.*");
 
         File file1 = new File(directory, "file1.txt");
         appendToFile(file1, "hello", "world");
         File file2 = new File(directory, "file2.txt");
         appendToFile(file2, "hello2", "world2");
 
-        instance.newJob(dag).join();
+        instance.newJob(p).join();
 
         assertEquals(Arrays.asList(entry("file2.txt", "hello2"), entry("file2.txt", "world2")), new ArrayList<>(list));
 
@@ -102,32 +101,35 @@ public class ReadFilesPTest extends JetTestSupport {
 
     @Test
     public void when_directory_then_ignore() {
-        DAG dag = buildDag(null);
+        Pipeline p = buildPipeline(null);
 
         File file1 = new File(directory, randomName());
         assertTrue(file1.mkdir());
 
-        instance.newJob(dag).join();
+        instance.newJob(p).join();
 
         assertEquals(0, list.size());
 
         finishDirectory(file1);
     }
 
-    private DAG buildDag(String glob) {
+    private Pipeline buildPipeline(String glob) {
         if (glob == null) {
             glob = "*";
         }
 
-        DAG dag = new DAG();
-        Vertex reader = dag.newVertex("reader", readFilesP(directory.getPath(), UTF_8, glob, false, Util::entry))
-                .localParallelism(1);
-        Vertex writer = dag.newVertex("writer", writeListP(list.getName())).localParallelism(1);
-        dag.edge(between(reader, writer));
-        return dag;
+        Pipeline p = Pipeline.create();
+        BatchSource<Entry<String, String>> source = Sources.filesBuilder(directory.getPath())
+                                                           .glob(glob).sharedFileSystem(false)
+                                                           .withHeader(false).charset(UTF_8)
+                                                           .build(Util::entry);
+        p.drawFrom(source).setLocalParallelism(1)
+         .drainTo(Sinks.list(list)).setLocalParallelism(1);
+
+        return p;
     }
 
-    private void finishDirectory(File ... files) {
+    private void finishDirectory(File... files) {
         for (File file : files) {
             assertTrue(file.delete());
         }

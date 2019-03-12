@@ -22,7 +22,7 @@ import com.hazelcast.jet.core.AbstractProcessor;
 import com.hazelcast.jet.core.ProcessorMetaSupplier;
 import com.hazelcast.jet.core.processor.SourceProcessors;
 import com.hazelcast.jet.function.FunctionEx;
-import com.hazelcast.jet.function.BiFunctionEx;
+import com.hazelcast.jet.function.TriFunction;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -30,8 +30,12 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.Spliterator;
 import java.util.stream.Stream;
 
+import static com.hazelcast.jet.Traversers.traverseIterator;
 import static com.hazelcast.jet.Traversers.traverseStream;
 
 /**
@@ -51,8 +55,9 @@ public final class ReadFilesP<R, T> extends AbstractProcessor {
     private final Path directory;
     private final String glob;
     private final boolean sharedFileSystem;
+    private final boolean withHeader;
     private final FunctionEx<? super Path, ? extends Stream<R>> readFileFn;
-    private final BiFunctionEx<? super String, ? super R, ? extends T> mapOutputFn;
+    private final TriFunction<? super String, ? super R, ? super R, ? extends T> mapOutputFn;
 
     private int processorIndex;
     private int parallelism;
@@ -62,15 +67,16 @@ public final class ReadFilesP<R, T> extends AbstractProcessor {
 
     private ReadFilesP(
             @Nonnull String directory,
-            @Nonnull String glob, boolean sharedFileSystem,
+            @Nonnull String glob, boolean sharedFileSystem, boolean withHeader,
             @Nonnull FunctionEx<? super Path, ? extends Stream<R>> readFileFn,
-            @Nonnull BiFunctionEx<? super String, ? super R, ? extends T> mapOutputFn
+            @Nonnull TriFunction<? super String, ? super R, ? super R, ? extends T> mapOutputFn
     ) {
         this.directory = Paths.get(directory);
         this.glob = glob;
         this.readFileFn = readFileFn;
         this.mapOutputFn = mapOutputFn;
         this.sharedFileSystem = sharedFileSystem;
+        this.withHeader = withHeader;
     }
 
     @Override
@@ -108,9 +114,16 @@ public final class ReadFilesP<R, T> extends AbstractProcessor {
         }
         assert currentStream == null : "currentStream != null";
         currentStream = readFileFn.apply(file);
+        Iterator<R> iterator = currentStream.iterator();
+        R header = null;
+        if (withHeader && iterator.hasNext()) {
+            header = iterator.next();
+        }
+
+        R finalHeader = header;
         String fileName = file.getFileName().toString();
-        return traverseStream(currentStream)
-                .map(line -> mapOutputFn.apply(fileName, line))
+        return traverseIterator(iterator)
+                .map(line -> mapOutputFn.apply(fileName, finalHeader, line))
                 .onFirstNull(() -> {
                     currentStream.close();
                     currentStream = null;
@@ -142,11 +155,12 @@ public final class ReadFilesP<R, T> extends AbstractProcessor {
             @Nonnull String directory,
             @Nonnull String glob,
             boolean sharedFileSystem,
+            boolean withHeader,
             @Nonnull FunctionEx<? super Path, ? extends Stream<W>> readFileFn,
-            @Nonnull BiFunctionEx<? super String, ? super W, ? extends T> mapOutputFn
+            @Nonnull TriFunction<? super String, ? super W, ? super W, ? extends T> mapOutputFn
     ) {
         return ProcessorMetaSupplier.of(() -> new ReadFilesP<>(
-                directory, glob, sharedFileSystem, readFileFn, mapOutputFn),
+                directory, glob, sharedFileSystem, withHeader, readFileFn, mapOutputFn),
                 2);
     }
 }
