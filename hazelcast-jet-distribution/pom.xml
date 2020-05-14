@@ -50,11 +50,11 @@
                 <configuration>
                     <organizeLicensesByDependencies>false</organizeLicensesByDependencies>
                     <acceptPomPackaging>true</acceptPomPackaging>
-                    <outputDirectory>${project.build.directory}</outputDirectory>
+                    <outputDirectory>src/root</outputDirectory>
                     <failOnBlacklist>true</failOnBlacklist>
                     <failOnMissing>true</failOnMissing>
                     <fileTemplate>${project.basedir}/src/NOTICE.ftl</fileTemplate>
-                    <thirdPartyFilename>NOTICE.txt</thirdPartyFilename>
+                    <thirdPartyFilename>NOTICE</thirdPartyFilename>
                     <excludedGroups>com.hazelcast</excludedGroups>
                     <excludedScopes>test,provided</excludedScopes>
                     <includedLicenses>
@@ -64,7 +64,6 @@
                         Public Domain|
                         BSD 3-Clause License|
                         BSD 2-Clause License|
-                        Common Development and Distribution License (CDDL) v1.0|CDDL + GPLv2 with classpath exception
                     </includedLicenses>
                     <licenseMerges>
                         <licenseMerge>
