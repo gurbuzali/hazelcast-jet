@@ -23,10 +23,12 @@ import com.hazelcast.jet.Job;
 import com.hazelcast.jet.config.JobConfig;
 import com.hazelcast.jet.pipeline.Pipeline;
 import com.hazelcast.test.HazelcastSerialClassRunner;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -34,9 +36,7 @@ import org.elasticsearch.action.support.WriteRequest.RefreshPolicy;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.search.SearchHit;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -53,7 +53,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.util.Lists.newArrayList;
 import static org.elasticsearch.client.RequestOptions.DEFAULT;
-import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 
 /**
  * Base class for running Elasticsearch connector tests
@@ -135,10 +134,21 @@ public abstract class BaseElasticTest {
      * Deletes all documents in all indexes
      */
     protected void deleteDocuments() throws IOException {
-        DeleteByQueryRequest request = new DeleteByQueryRequest("*")
-                .setQuery(matchAllQuery())
-                .setRefresh(true);
-        elasticClient.deleteByQuery(request, DEFAULT);
+        SearchRequest request = new SearchRequest("*");
+        request.source().size(1000);
+        SearchResponse response = elasticClient.search(request, DEFAULT);
+
+        BulkRequest bulkRequest = new BulkRequest()
+                .setRefreshPolicy(RefreshPolicy.IMMEDIATE);
+        for (SearchHit hit : response.getHits().getHits()) {
+            DeleteRequest deleteRequest = new DeleteRequest(hit.getIndex())
+                    .id(hit.getId())
+                    .type(hit.getType());
+
+            bulkRequest.add(deleteRequest);
+        }
+
+        elasticClient.bulk(bulkRequest, DEFAULT);
     }
 
     /**
@@ -175,6 +185,7 @@ public abstract class BaseElasticTest {
 
         for (Map<String, Object> document : documents) {
             request.add(new IndexRequest(index)
+                    .type("document")
                     .source(document));
         }
 

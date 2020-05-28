@@ -17,10 +17,8 @@
 package com.hazelcast.jet.elastic.impl;
 
 import com.hazelcast.function.FunctionEx;
-import com.hazelcast.jet.core.test.TestOutbox;
 import com.hazelcast.jet.core.test.TestSupport;
 import com.hazelcast.jet.elastic.impl.Shard.Prirep;
-import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -46,7 +44,6 @@ import java.util.List;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.util.Lists.newArrayList;
@@ -70,7 +67,6 @@ public class ElasticSourcePTest {
     private ElasticSourceP<String> processor;
     private SerializableRestClient mockClient;
     private SearchResponse response;
-    private TestOutbox outbox;
 
     @Before
     public void setUp() throws Exception {
@@ -79,7 +75,7 @@ public class ElasticSourcePTest {
         // See org.elasticsearch.action.search.SearchResponse#empty
         response = mock(SearchResponse.class);
         when(response.getScrollId()).thenReturn(SCROLL_ID);
-        when(mockClient.search(any(), any())).thenReturn(response);
+        when(mockClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(response);
     }
 
     private TestSupport runProcessor() throws Exception {
@@ -119,14 +115,14 @@ public class ElasticSourcePTest {
 
     @Test
     public void when_runProcessor_then_executeSearchRequestWithScroll() throws Exception {
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(0, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 0, Float.NaN));
 
         TestSupport support = runProcessor();
 
         support.expectOutput(emptyList());
 
         ArgumentCaptor<SearchRequest> captor = forClass(SearchRequest.class);
-        verify(mockClient).search(captor.capture(), any());
+        verify(mockClient).search(captor.capture(), any(RequestOptions.class));
 
         SearchRequest request = captor.getValue();
         assertThat(request.scroll().keepAlive().getStringRep()).isEqualTo(KEEP_ALIVE);
@@ -134,7 +130,7 @@ public class ElasticSourcePTest {
 
     @Test
     public void when_runProcessorWithOptionsFn_then_shouldUseOptionsFnForSearchRequest() throws Exception {
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(0, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 0, Float.NaN));
 
         // get different instance than default
         TestSupport testSupport = runProcessor(request -> {
@@ -158,10 +154,10 @@ public class ElasticSourcePTest {
     public void given_singleHit_when_runProcessor_then_produceSingleHit() throws Exception {
         SearchHit hit = new SearchHit(0, "id-0", new Text("ignored"), emptyMap());
         hit.sourceRef(new BytesArray(HIT_SOURCE));
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit}, new TotalHits(1, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit}, 1, Float.NaN));
 
         SearchResponse response2 = mock(SearchResponse.class);
-        when(response2.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(1, EQUAL_TO), Float.NaN));
+        when(response2.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 1, Float.NaN));
         when(mockClient.scroll(any(), any())).thenReturn(response2);
 
         TestSupport testSupport = runProcessor();
@@ -173,15 +169,15 @@ public class ElasticSourcePTest {
     public void givenMultipleResults_when_runProcessor_then_useScrollIdInFollowupScrollRequest() throws Exception {
         SearchHit hit = new SearchHit(0, "id-0", new Text("ignored"), emptyMap());
         hit.sourceRef(new BytesArray(HIT_SOURCE));
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit}, new TotalHits(3, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit}, 3, Float.NaN));
 
         SearchResponse response2 = mock(SearchResponse.class);
         SearchHit hit2 = new SearchHit(1, "id-1", new Text("ignored"), emptyMap());
         hit2.sourceRef(new BytesArray(HIT_SOURCE2));
-        when(response2.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit2}, new TotalHits(3, EQUAL_TO), Float.NaN));
+        when(response2.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit2}, 3, Float.NaN));
 
         SearchResponse response3 = mock(SearchResponse.class);
-        when(response3.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(3, EQUAL_TO), Float.NaN));
+        when(response3.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 3, Float.NaN));
         when(mockClient.scroll(any(), any())).thenReturn(response2, response3);
 
         TestSupport testSupport = runProcessor();
@@ -200,10 +196,10 @@ public class ElasticSourcePTest {
     public void when_runProcessorWithOptionsFn_then_shouldUseOptionsFnForScrollRequest() throws Exception {
         SearchHit hit = new SearchHit(0, "id-0", new Text("ignored"), emptyMap());
         hit.sourceRef(new BytesArray(HIT_SOURCE));
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit}, new TotalHits(1, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{hit}, 1, Float.NaN));
 
         SearchResponse response2 = mock(SearchResponse.class);
-        when(response2.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(1, EQUAL_TO), Float.NaN));
+        when(response2.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 1, Float.NaN));
         when(mockClient.scroll(any(), any())).thenReturn(response2);
 
         // get different instance than default
@@ -228,7 +224,7 @@ public class ElasticSourcePTest {
     public void when_runProcessorWithCoLocation_then_useLocalNodeOnly() throws Exception {
         RestClient lowClient = mock(RestClient.class);
         when(mockClient.getLowLevelClient()).thenReturn(lowClient);
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(0, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 0, Float.NaN));
 
         TestSupport testSupport = runProcessorWithCoLocation(newArrayList(
                 new Shard("my-index", 0, Prirep.p, 42, "STARTED", "10.0.0.1", "10.0.0.1:9200", "es1")
@@ -248,7 +244,7 @@ public class ElasticSourcePTest {
 
     @Test
     public void when_runProcessorWithCoLocation_thenSearchShardsWithPreference() throws Exception {
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(0, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 0, Float.NaN));
 
         TestSupport processor = runProcessorWithCoLocation(newArrayList(
                 new Shard("my-index", 0, Prirep.p, 42, "STARTED", "10.0.0.1", "10.0.0.1:9200", "es1"),
@@ -258,7 +254,7 @@ public class ElasticSourcePTest {
         processor.expectOutput(emptyList());
 
         ArgumentCaptor<SearchRequest> captor = forClass(SearchRequest.class);
-        verify(mockClient).search(captor.capture(), any());
+        verify(mockClient).search(captor.capture(), any(RequestOptions.class));
 
         SearchRequest request = captor.getValue();
         assertThat(request.preference()).isEqualTo("_shards:0,1,2|_only_local");
@@ -266,7 +262,7 @@ public class ElasticSourcePTest {
 
     @Test
     public void when_runProcessorWithParallelism_thenUseSlicingBasedOnGlobalValues() throws Exception {
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(0, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 0, Float.NaN));
 
         TestSupport testSupport = runProcessor((r) -> RequestOptions.DEFAULT, emptyList(), true, false);
         testSupport.localProcessorIndex(1);
@@ -276,7 +272,7 @@ public class ElasticSourcePTest {
         testSupport.expectOutput(emptyList());
 
         ArgumentCaptor<SearchRequest> captor = forClass(SearchRequest.class);
-        verify(mockClient).search(captor.capture(), any());
+        verify(mockClient).search(captor.capture(), any(RequestOptions.class));
 
         SearchRequest request = captor.getValue();
         SliceBuilder slice = request.source().slice();
@@ -288,7 +284,7 @@ public class ElasticSourcePTest {
 
     @Test
     public void when_runProcessorWithCoLocationAndSlicing_thenUseSlicingBasedOnLocalValues() throws Exception {
-        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, new TotalHits(0, EQUAL_TO), Float.NaN));
+        when(response.getHits()).thenReturn(new SearchHits(new SearchHit[]{}, 0, Float.NaN));
 
         TestSupport testSupport = runProcessor((r) -> RequestOptions.DEFAULT,
                 newArrayList(
@@ -304,7 +300,7 @@ public class ElasticSourcePTest {
         testSupport.expectOutput(emptyList());
 
         ArgumentCaptor<SearchRequest> captor = forClass(SearchRequest.class);
-        verify(mockClient).search(captor.capture(), any());
+        verify(mockClient).search(captor.capture(), any(RequestOptions.class));
 
         SearchRequest request = captor.getValue();
         SliceBuilder slice = request.source().slice();

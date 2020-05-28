@@ -23,7 +23,6 @@ import com.hazelcast.jet.Traversers;
 import com.hazelcast.jet.core.AbstractProcessor;
 import com.hazelcast.logging.ILogger;
 import org.apache.http.HttpHost;
-import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.search.ClearScrollRequest;
 import org.elasticsearch.action.search.ClearScrollResponse;
@@ -170,9 +169,8 @@ final class ElasticSourceP<T> extends AbstractProcessor {
                 hits = requireNonNull(response.getHits(), "null hits in the response");
                 scrollId = requireNonNull(response.getScrollId(), "null scrollId in the response");
 
-                TotalHits totalHits = hits.getTotalHits();
-                logger.fine("Initialized scroll with scrollId " + scrollId + ", total results " +
-                        totalHits.relation + ", " + totalHits.value);
+                long totalHits = hits.getTotalHits();
+                logger.fine("Initialized scroll with scrollId " + scrollId + ", total results " + ", " + totalHits);
             } catch (IOException e) {
                 throw new JetException("Could not execute SearchRequest to Elastic", e);
             }

@@ -63,7 +63,7 @@ public class AuthElasticSinksTest extends BaseElasticTest {
         Sink<TestItem> elasticSink = new ElasticSinkBuilder<>()
                 .clientFn(elasticClientSupplier())
                 .bulkRequestFn(() -> new BulkRequest().setRefreshPolicy(RefreshPolicy.IMMEDIATE))
-                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index").source(item.asMap()))
+                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index", "document").source(item.asMap()))
                 .build();
 
         Pipeline p = Pipeline.create();
@@ -84,7 +84,7 @@ public class AuthElasticSinksTest extends BaseElasticTest {
         Sink<TestItem> elasticSink = new ElasticSinkBuilder<>()
                 .clientFn(() -> client("elastic", "WrongPassword", containerIp, port))
                 .bulkRequestFn(() -> new BulkRequest().setRefreshPolicy(RefreshPolicy.IMMEDIATE))
-                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index").source(item.asMap()))
+                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index", "document").source(item.asMap()))
                 .build();
 
         Pipeline p = Pipeline.create();
@@ -105,7 +105,7 @@ public class AuthElasticSinksTest extends BaseElasticTest {
         Sink<TestItem> elasticSink = new ElasticSinkBuilder<>()
                 .clientFn(() -> client(containerIp, port))
                 .bulkRequestFn(() -> new BulkRequest().setRefreshPolicy(RefreshPolicy.IMMEDIATE))
-                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index").source(item.asMap()))
+                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index", "document").source(item.asMap()))
                 .build();
 
         Pipeline p = Pipeline.create();
@@ -114,7 +114,7 @@ public class AuthElasticSinksTest extends BaseElasticTest {
 
         assertThatThrownBy(() -> submitJob(p))
                 .hasRootCauseInstanceOf(ElasticsearchStatusException.class)
-                .hasStackTraceContaining("missing authentication credentials");
+                .hasStackTraceContaining("missing authentication token");
     }
 
 }

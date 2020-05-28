@@ -89,6 +89,6 @@ public class AuthElasticSourcesTest extends BaseElasticTest {
 
         assertThatThrownBy(() -> submitJob(p))
                 .hasRootCauseInstanceOf(ResponseException.class)
-                .hasStackTraceContaining("missing authentication credentials");
+                .hasStackTraceContaining("missing authentication token");
     }
 }

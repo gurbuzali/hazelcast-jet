@@ -19,7 +19,6 @@ package com.hazelcast.jet.elastic;
 import com.hazelcast.jet.pipeline.Pipeline;
 import com.hazelcast.jet.pipeline.Sink;
 import com.hazelcast.jet.pipeline.test.TestSources;
-import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -45,7 +44,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
         Sink<TestItem> elasticSink = new ElasticSinkBuilder<>()
                 .clientFn(elasticClientSupplier())
                 .bulkRequestFn(() -> new BulkRequest().setRefreshPolicy(RefreshPolicy.IMMEDIATE))
-                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index").source(item.asMap()))
+                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index", "document").source(item.asMap()))
                 .build();
 
         Pipeline p = Pipeline.create();
@@ -61,7 +60,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
     public void given_batchOfDocuments_whenWriteToElasticSink_then_batchOfDocumentsInIndex() throws IOException {
         Sink<TestItem> elasticSink = new ElasticSinkBuilder<>()
                 .clientFn(elasticClientSupplier())
-                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index").source(item.asMap()))
+                .mapToRequestFn((TestItem item) -> new IndexRequest("my-index", "document").source(item.asMap()))
                 .build();
 
         int batchSize = 10_000;
@@ -77,15 +76,15 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
         refreshIndex();
 
         SearchResponse response = elasticClient.search(new SearchRequest("my-index"), DEFAULT);
-        TotalHits totalHits = response.getHits().getTotalHits();
-        assertThat(totalHits.value).isEqualTo(batchSize);
+        long totalHits = response.getHits().getTotalHits();
+        assertThat(totalHits).isEqualTo(batchSize);
     }
 
     @Test
     public void given_sinkCreatedByFactoryMethod_whenWriteToElasticSink_thenDocumentInIndex() throws Exception {
         Sink<TestItem> elasticSink = ElasticSinks.elastic(
                 elasticClientSupplier(),
-                item -> new IndexRequest("my-index").source(item.asMap())
+                item -> new IndexRequest("my-index", "document").source(item.asMap())
         );
 
         Pipeline p = Pipeline.create();
@@ -106,7 +105,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
 
         Sink<TestItem> elasticSink = ElasticSinks.elastic(
                 elasticClientSupplier(),
-                item -> new UpdateRequest("my-index", item.id).doc(item.asMap())
+                item -> new UpdateRequest("my-index", "document", item.id).doc(item.asMap())
         );
 
         Pipeline p = Pipeline.create();
@@ -127,7 +126,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
 
         Sink<TestItem> elasticSink = ElasticSinks.elastic(
                 elasticClientSupplier(),
-                (item) -> new DeleteRequest("my-index", item.id)
+                (item) -> new DeleteRequest("my-index", "document", item.id)
         );
 
         Pipeline p = Pipeline.create();
