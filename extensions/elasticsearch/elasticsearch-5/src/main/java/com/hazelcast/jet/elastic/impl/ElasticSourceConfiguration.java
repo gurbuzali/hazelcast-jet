@@ -18,9 +18,7 @@ package com.hazelcast.jet.elastic.impl;
 
 import com.hazelcast.function.FunctionEx;
 import com.hazelcast.function.SupplierEx;
-import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.search.SearchHit;
 
@@ -40,7 +38,6 @@ public class ElasticSourceConfiguration<T> implements Serializable {
 
     private final SupplierEx<RestHighLevelClient> clientFn;
     private final SupplierEx<SearchRequest> searchRequestFn;
-    private final FunctionEx<? super ActionRequest, RequestOptions> optionsFn;
     private final FunctionEx<? super SearchHit, T> mapToItemFn;
     private final boolean slicing;
     private final boolean coLocatedReading;
@@ -48,14 +45,12 @@ public class ElasticSourceConfiguration<T> implements Serializable {
 
     public ElasticSourceConfiguration(SupplierEx<RestHighLevelClient> clientFn,
                                       SupplierEx<SearchRequest> searchRequestFn,
-                                      FunctionEx<? super ActionRequest, RequestOptions> optionsFn,
                                       FunctionEx<? super SearchHit, T> mapToItemFn,
                                       boolean slicing, boolean coLocatedReading,
                                       String scrollKeepAlive) {
 
         this.clientFn = clientFn;
         this.searchRequestFn = searchRequestFn;
-        this.optionsFn = optionsFn;
         this.mapToItemFn = mapToItemFn;
         this.slicing = slicing;
         this.coLocatedReading = coLocatedReading;
@@ -75,10 +70,6 @@ public class ElasticSourceConfiguration<T> implements Serializable {
     @Nonnull
     public FunctionEx<? super SearchHit, T> mapToItemFn() {
         return mapToItemFn;
-    }
-
-    public FunctionEx<? super ActionRequest, RequestOptions> optionsFn() {
-        return optionsFn;
     }
 
     public boolean isSlicingEnabled() {

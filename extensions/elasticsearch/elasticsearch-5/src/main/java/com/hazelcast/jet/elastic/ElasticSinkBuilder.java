@@ -22,11 +22,10 @@ import com.hazelcast.jet.pipeline.Sink;
 import com.hazelcast.jet.pipeline.SinkBuilder;
 import com.hazelcast.logging.ILogger;
 import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 
@@ -68,7 +67,6 @@ public final class ElasticSinkBuilder<T> implements Serializable {
     private SupplierEx<RestClientBuilder> clientFn;
     private SupplierEx<BulkRequest> bulkRequestFn = BulkRequest::new;
     private FunctionEx<? super T, ? extends DocWriteRequest<?>> mapToRequestFn;
-    private FunctionEx<? super ActionRequest, RequestOptions> optionsFn = (request) -> RequestOptions.DEFAULT;
 
     /**
      * Set the client supplier function
@@ -142,31 +140,6 @@ public final class ElasticSinkBuilder<T> implements Serializable {
     }
 
     /**
-     * Set the function that provides {@link RequestOptions}
-     * <p>
-     * It can either return a constant value or a value based on provided request.
-     * <p>
-     * For example, to provide a custom authentication header:
-     * <pre>{@code
-     * sinkBuilder.optionsFn((request) -> {
-     *     RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
-     *     builder.addHeader("Authorization", "Bearer " + TOKEN);
-     *     return builder.build();
-     * })
-     * }</pre>
-     *
-     * @param optionsFn function that provides {@link RequestOptions}
-     * @see <a
-     * href="https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/java-rest-low-usage-requests.html">
-     * RequestOptions in Elastic documentation</a>
-     */
-    @Nonnull
-    public ElasticSinkBuilder<T> optionsFn(@Nonnull FunctionEx<? super ActionRequest, RequestOptions> optionsFn) {
-        this.optionsFn = checkNonNullAndSerializable(optionsFn, "optionsFn");
-        return this;
-    }
-
-    /**
      * Create a sink that writes data into Elasticsearch based on this builder configuration
      */
     @Nonnull
@@ -176,8 +149,7 @@ public final class ElasticSinkBuilder<T> implements Serializable {
 
         return SinkBuilder
                 .sinkBuilder(DEFAULT_NAME, ctx ->
-                        new BulkContext(new RestHighLevelClient(clientFn.get()), bulkRequestFn,
-                                optionsFn, ctx.logger()))
+                        new BulkContext(clientFn, bulkRequestFn, ctx.logger()))
                 .<T>receiveFn((bulkContext, item) -> bulkContext.add(mapToRequestFn.apply(item)))
                 .flushFn(BulkContext::flush)
                 .destroyFn(BulkContext::close)
@@ -187,18 +159,18 @@ public final class ElasticSinkBuilder<T> implements Serializable {
 
     static final class BulkContext {
 
+        private final RestClient restClient;
         private final RestHighLevelClient client;
         private final SupplierEx<BulkRequest> bulkRequestSupplier;
-        private final FunctionEx<? super ActionRequest, RequestOptions> optionsFn;
 
         private BulkRequest bulkRequest;
         private final ILogger logger;
 
-        BulkContext(RestHighLevelClient client, SupplierEx<BulkRequest> bulkRequestSupplier,
-                    FunctionEx<? super ActionRequest, RequestOptions> optionsFn, ILogger logger) {
-            this.client = client;
+        BulkContext(SupplierEx<RestClientBuilder> clientBuilder, SupplierEx<BulkRequest> bulkRequestSupplier,
+                    ILogger logger) {
+            restClient = clientBuilder.get().build();
+            this.client = new RestHighLevelClient(restClient);
             this.bulkRequestSupplier = bulkRequestSupplier;
-            this.optionsFn = optionsFn;
 
             this.bulkRequest = bulkRequestSupplier.get();
             this.logger = logger;
@@ -210,7 +182,7 @@ public final class ElasticSinkBuilder<T> implements Serializable {
 
         void flush() throws IOException {
             if (!bulkRequest.requests().isEmpty()) {
-                BulkResponse response = client.bulk(bulkRequest, optionsFn.apply(bulkRequest));
+                BulkResponse response = client.bulk(bulkRequest);
                 if (response.hasFailures()) {
                     throw new ElasticsearchException(response.buildFailureMessage());
                 }
@@ -226,7 +198,7 @@ public final class ElasticSinkBuilder<T> implements Serializable {
             try {
                 flush();
             } finally {
-                client.close();
+                restClient.close();
             }
         }
     }

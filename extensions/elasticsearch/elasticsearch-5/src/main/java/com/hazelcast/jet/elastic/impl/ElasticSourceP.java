@@ -16,21 +16,18 @@
 
 package com.hazelcast.jet.elastic.impl;
 
-import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.JetException;
 import com.hazelcast.jet.Traverser;
 import com.hazelcast.jet.Traversers;
 import com.hazelcast.jet.core.AbstractProcessor;
 import com.hazelcast.logging.ILogger;
 import org.apache.http.HttpHost;
-import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.search.ClearScrollRequest;
 import org.elasticsearch.action.search.ClearScrollResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchScrollRequest;
-import org.elasticsearch.client.Node;
-import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
@@ -38,9 +35,9 @@ import org.elasticsearch.search.slice.SliceBuilder;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.List;
 
-import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -55,6 +52,7 @@ final class ElasticSourceP<T> extends AbstractProcessor {
 
     // need to keep ElasticScrollTraverser to be able to close the scroll when needed
     private ElasticScrollTraverser scrollTraverser;
+    private RestClient restClient;
 
     ElasticSourceP(ElasticSourceConfiguration<T> configuration, List<Shard> shards) {
         this.configuration = configuration;
@@ -90,6 +88,7 @@ final class ElasticSourceP<T> extends AbstractProcessor {
             }
         }
 
+        restClient = getRestClient(client);
         if (configuration.isCoLocatedReadingEnabled()) {
             logger.fine("Assigned shards: " + shards);
             if (shards.isEmpty()) {
@@ -97,8 +96,8 @@ final class ElasticSourceP<T> extends AbstractProcessor {
                 return;
             }
 
-            Node node = createLocalElasticNode();
-            client.getLowLevelClient().setNodes(singleton(node));
+            HttpHost host = createLocalElasticNode();
+            restClient.setHosts(host);
             String preference =
                     "_shards:" + shards.stream().map(shard -> String.valueOf(shard.getShard())).collect(joining(","))
                             + "|_only_local";
@@ -109,13 +108,19 @@ final class ElasticSourceP<T> extends AbstractProcessor {
         traverser = scrollTraverser.map(configuration.mapToItemFn());
     }
 
-    private Node createLocalElasticNode() {
+    private RestClient getRestClient(RestHighLevelClient client) throws Exception {
+        Field field = RestHighLevelClient.class.getDeclaredField("client");
+        field.setAccessible(true);
+        return (RestClient) field.get(client);
+    }
+
+    private HttpHost createLocalElasticNode() {
         List<String> ips = shards.stream().map(Shard::getHttpAddress).distinct().collect(toList());
         if (ips.size() != 1) {
             throw new JetException("Should receive shards from single local node, got: " + ips);
         }
         String localIp = ips.get(0);
-        return new Node(HttpHost.create(localIp));
+        return HttpHost.create(localIp);
     }
 
     @Override
@@ -136,7 +141,7 @@ final class ElasticSourceP<T> extends AbstractProcessor {
         }
 
         try {
-            client.close();
+            restClient.close();
         } catch (Exception e) { // IOException on client.close()
             logger.fine("Could not close client", e);
         }
@@ -147,7 +152,6 @@ final class ElasticSourceP<T> extends AbstractProcessor {
         private final ILogger logger;
 
         private final RestHighLevelClient client;
-        private final FunctionEx<? super ActionRequest, RequestOptions> optionsFn;
         private final String scrollKeepAlive;
 
         private SearchHits hits;
@@ -157,13 +161,11 @@ final class ElasticSourceP<T> extends AbstractProcessor {
         ElasticScrollTraverser(ElasticSourceConfiguration<?> configuration, RestHighLevelClient client, SearchRequest sr,
                                ILogger logger) {
             this.client = client;
-            this.optionsFn = configuration.optionsFn();
             this.scrollKeepAlive = configuration.scrollKeepAlive();
             this.logger = logger;
 
             try {
-                RequestOptions options = optionsFn.apply(sr);
-                SearchResponse response = this.client.search(sr, options);
+                SearchResponse response = this.client.search(sr);
 
                 // These should be always present, even when there are no results
                 hits = requireNonNull(response.getHits(), "null hits in the response");
@@ -188,7 +190,7 @@ final class ElasticSourceP<T> extends AbstractProcessor {
                     SearchScrollRequest ssr = new SearchScrollRequest(scrollId);
                     ssr.scroll(scrollKeepAlive);
 
-                    SearchResponse searchResponse = client.scroll(ssr, optionsFn.apply(ssr));
+                    SearchResponse searchResponse = client.searchScroll(ssr);
                     hits = searchResponse.getHits();
                     if (hits.getHits().length == 0) {
                         return null;
@@ -213,8 +215,7 @@ final class ElasticSourceP<T> extends AbstractProcessor {
             ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
             clearScrollRequest.addScrollId(scrollId);
             try {
-                ClearScrollResponse response = client.clearScroll(clearScrollRequest,
-                        optionsFn.apply(clearScrollRequest));
+                ClearScrollResponse response = client.clearScroll(clearScrollRequest);
 
                 if (response.isSucceeded()) {
                     logger.fine("Succeeded clearing " + response.getNumFreed() + " scrolls");

@@ -22,8 +22,11 @@ import com.hazelcast.jet.JetException;
 import com.hazelcast.jet.core.ProcessorMetaSupplier;
 import com.hazelcast.jet.core.ProcessorSupplier;
 import com.hazelcast.jet.core.processor.Processors;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
 
 import javax.annotation.Nonnull;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -65,7 +68,11 @@ public class ElasticSourcePMetaSupplier<T> implements ProcessorMetaSupplier {
 
     @Override
     public void init(@Nonnull Context context) throws Exception {
-        try (ElasticCatClient catClient = new ElasticCatClient(configuration.clientFn().get().getLowLevelClient())) {
+        RestHighLevelClient client = configuration.clientFn().get();
+        Field field = RestHighLevelClient.class.getDeclaredField("client");
+        field.setAccessible(true);
+        RestClient restClient = (RestClient) field.get(client);
+        try (ElasticCatClient catClient = new ElasticCatClient(restClient)) {
             List<Shard> shards = catClient.shards(configuration.searchRequestFn().get().indices());
 
             if (configuration.isCoLocatedReadingEnabled()) {

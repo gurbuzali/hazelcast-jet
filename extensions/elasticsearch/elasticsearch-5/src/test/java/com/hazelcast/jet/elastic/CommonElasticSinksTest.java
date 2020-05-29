@@ -19,7 +19,6 @@ package com.hazelcast.jet.elastic;
 import com.hazelcast.jet.pipeline.Pipeline;
 import com.hazelcast.jet.pipeline.Sink;
 import com.hazelcast.jet.pipeline.test.TestSources;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.index.IndexRequest;
@@ -35,7 +34,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.elasticsearch.client.RequestOptions.DEFAULT;
 
 public abstract class CommonElasticSinksTest extends BaseElasticTest {
 
@@ -75,7 +73,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
         submitJob(p);
         refreshIndex();
 
-        SearchResponse response = elasticClient.search(new SearchRequest("my-index"), DEFAULT);
+        SearchResponse response = elasticClient.search(new SearchRequest("my-index"));
         long totalHits = response.getHits().getTotalHits();
         assertThat(totalHits).isEqualTo(batchSize);
     }
@@ -137,11 +135,6 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
         refreshIndex();
 
         assertNoDocuments("my-index");
-    }
-
-    private void refreshIndex() throws IOException {
-        // Need to refresh index because the default bulk request doesn't do it and we may not see the result
-        elasticClient.indices().refresh(new RefreshRequest("my-index"), DEFAULT);
     }
 
     static class TestItem implements Serializable {

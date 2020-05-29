@@ -22,9 +22,7 @@ import com.hazelcast.jet.elastic.impl.ElasticSourceConfiguration;
 import com.hazelcast.jet.elastic.impl.ElasticSourcePMetaSupplier;
 import com.hazelcast.jet.pipeline.BatchSource;
 import com.hazelcast.jet.pipeline.Sources;
-import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.search.SearchHit;
@@ -62,7 +60,6 @@ public final class ElasticSourceBuilder<T> {
 
     private SupplierEx<RestClientBuilder> clientFn;
     private SupplierEx<SearchRequest> searchRequestFn;
-    private FunctionEx<? super ActionRequest, RequestOptions> optionsFn = request -> RequestOptions.DEFAULT;
     private FunctionEx<? super SearchHit, T> mapToItemFn;
     private boolean slicing;
     private boolean coLocatedReading;
@@ -81,7 +78,7 @@ public final class ElasticSourceBuilder<T> {
 
         ElasticSourceConfiguration<T> configuration = new ElasticSourceConfiguration<>(
                 restHighLevelClientFn(clientFn),
-                searchRequestFn, optionsFn, mapToItemFn, slicing, coLocatedReading,
+                searchRequestFn, mapToItemFn, slicing, coLocatedReading,
                 scrollKeepAlive
         );
         ElasticSourcePMetaSupplier<T> metaSupplier = new ElasticSourcePMetaSupplier<>(configuration);
@@ -90,7 +87,7 @@ public final class ElasticSourceBuilder<T> {
 
     // Don't inline - it would capture this.clientFn and would need to serialize whole builder instance
     private SupplierEx<RestHighLevelClient> restHighLevelClientFn(SupplierEx<RestClientBuilder> clientFn) {
-        return () -> new RestHighLevelClient(clientFn.get());
+        return () -> new RestHighLevelClient(clientFn.get().build());
     }
 
     /**
@@ -155,31 +152,6 @@ public final class ElasticSourceBuilder<T> {
         ElasticSourceBuilder<T_NEW> newThis = (ElasticSourceBuilder<T_NEW>) this;
         newThis.mapToItemFn = checkSerializable(mapToItemFn, "mapToItemFn");
         return newThis;
-    }
-
-    /**
-     * Set the function that provides {@link RequestOptions}
-     * <p>
-     * It can either return a constant value or a value based on provided request.
-     * <p>
-     * For example, use this to provide a custom authentication header:
-     * <pre>{@code
-     * sourceBuilder.optionsFn((request) -> {
-     *     RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
-     *     builder.addHeader("Authorization", "Bearer " + TOKEN);
-     *     return builder.build();
-     * })
-     * }</pre>
-     *
-     * @param optionsFn function that provides {@link RequestOptions}
-     * @see <a
-     * href="https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/java-rest-low-usage-requests.html">
-     * RequestOptions in Elastic documentation</a>
-     */
-    @Nonnull
-    public ElasticSourceBuilder<T> optionsFn(@Nonnull FunctionEx<? super ActionRequest, RequestOptions> optionsFn) {
-        this.optionsFn = checkSerializable(optionsFn, "optionsFn");
-        return this;
     }
 
     /**

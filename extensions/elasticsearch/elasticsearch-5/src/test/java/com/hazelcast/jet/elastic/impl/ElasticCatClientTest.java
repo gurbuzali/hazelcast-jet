@@ -26,6 +26,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,7 +46,7 @@ public class ElasticCatClientTest {
 
         Response nodesResponse = response("es2node_nodes.json");
         Response shardsResponse = response("es2node_shards.json");
-        when(restClient.performRequest(any()))
+        when(restClient.performRequest(any(), any(), any(Map.class)))
                 .thenReturn(nodesResponse, shardsResponse);
 
         List<Shard> shards = catClient.shards("my-index");

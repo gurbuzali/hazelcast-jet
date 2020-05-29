@@ -29,12 +29,14 @@ import static com.hazelcast.jet.elastic.ElasticClients.client;
 
 public final class ElasticSupport {
 
-    public static final String ELASTICSEARCH_IMAGE = "elasticsearch:6.8.9";
+    public static final String ELASTICSEARCH_IMAGE = "docker.elastic.co/elasticsearch/elasticsearch:5.6.16";
     public static final int PORT = 9200;
 
     // Elastic container takes long time to start up, reusing the container for speedup
     public static final Supplier<ElasticsearchContainer> elastic = Util.memoize(() -> {
-        ElasticsearchContainer elastic = new ElasticsearchContainer(ELASTICSEARCH_IMAGE);
+        ElasticsearchContainer elastic = new ElasticsearchContainer(ELASTICSEARCH_IMAGE)
+            .withEnv("cluster.name", "elasticsearch")
+            .withEnv("xpack.security.enabled", "false");
         elastic.start();
         Runtime.getRuntime().addShutdownHook(new Thread(elastic::stop));
         return elastic;
@@ -45,8 +47,7 @@ public final class ElasticSupport {
      */
     public static Supplier<ElasticsearchContainer> secureElastic = Util.memoize(() -> {
         ElasticsearchContainer elastic = new ElasticsearchContainer(ELASTICSEARCH_IMAGE)
-                .withEnv("ELASTIC_USERNAME", "elastic")
-                .withEnv("ELASTIC_PASSWORD", "SuperSecret")
+                .withEnv("cluster.name", "elasticsearch")
                 .withEnv("xpack.security.enabled", "true");
 
         elastic.start();

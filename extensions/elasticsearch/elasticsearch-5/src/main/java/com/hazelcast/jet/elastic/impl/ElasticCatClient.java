@@ -25,7 +25,6 @@ import com.hazelcast.jet.elastic.impl.Shard.Prirep;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestClient;
 
@@ -34,6 +33,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,9 +62,10 @@ public class ElasticCatClient implements Closeable {
      */
     public Master master() {
         try {
-            Request r = new Request("GET", "/_cat/master");
-            r.addParameter("format", "json");
-            Response res = client.performRequest(r);
+            Map<String, String> params = new HashMap<>();
+            params.put("format", "json");
+
+            Response res = client.performRequest("GET", "/_cat/master", params);
 
             try (InputStreamReader reader = new InputStreamReader(res.getEntity().getContent(), UTF_8)) {
                 JsonArray array = Json.parse(reader).asArray();
@@ -86,11 +87,11 @@ public class ElasticCatClient implements Closeable {
      */
     public List<Node> nodes() {
         try {
-            Request r = new Request("GET", "/_cat/nodes");
-            r.addParameter("format", "json");
-            r.addParameter("full_id", "true");
-            r.addParameter("h", "id,ip,name,http_address,master");
-            Response res = client.performRequest(r);
+            Map<String, String> params = new HashMap<>();
+            params.put("format", "json");
+            params.put("full_id", "true");
+            params.put("h", "id,ip,name,http_address,master");
+            Response res = client.performRequest("GET", "/_cat/nodes", params);
 
             try (InputStreamReader reader = new InputStreamReader(res.getEntity().getContent(), UTF_8)) {
                 JsonArray array = Json.parse(reader).asArray();
@@ -131,10 +132,10 @@ public class ElasticCatClient implements Closeable {
         Map<String, String> idToAddress = nodes().stream().collect(toMap(Node::getId, Node::getHttpAddress));
 
         try {
-            Request r = new Request("GET", "/_cat/shards/" + String.join(",", indices));
-            r.addParameter("format", "json");
-            r.addParameter("h", "id,index,shard,prirep,docs,state,ip,node");
-            Response res = client.performRequest(r);
+            Map<String, String> params = new HashMap<>();
+            params.put("format", "json");
+            params.put("h", "id,index,shard,prirep,docs,state,ip,node");
+            Response res = client.performRequest("GET", "/_cat/shards/" + String.join(",", indices), params);
 
             try (InputStreamReader reader = new InputStreamReader(res.getEntity().getContent(), UTF_8)) {
                 JsonArray array = Json.parse(reader).asArray();

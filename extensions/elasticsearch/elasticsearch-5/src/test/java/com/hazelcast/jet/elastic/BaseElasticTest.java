@@ -25,6 +25,7 @@ import com.hazelcast.jet.pipeline.Pipeline;
 import com.hazelcast.test.HazelcastSerialClassRunner;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -33,11 +34,13 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 
@@ -52,7 +55,6 @@ import static com.google.common.collect.ImmutableMap.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.util.Lists.newArrayList;
-import static org.elasticsearch.client.RequestOptions.DEFAULT;
 
 /**
  * Base class for running Elasticsearch connector tests
@@ -68,13 +70,18 @@ public abstract class BaseElasticTest {
     protected static final int BATCH_SIZE = 42;
 
     protected RestHighLevelClient elasticClient;
+    protected TransportClient transportClient;
+
     protected JetInstance jet;
     protected IList<String> results;
 
     @Before
     public void setUpBase() {
         if (elasticClient == null) {
-            elasticClient = new RestHighLevelClient(elasticClientSupplier().get());
+            elasticClient = new RestHighLevelClient(elasticClientSupplier().get().build());
+            transportClient = new PreBuiltTransportClient(Settings.EMPTY)
+                    .addTransportAddress(new InetSocketTransportAddress(ElasticSupport.elastic.get().getTcpHost()));
+
         }
         cleanElasticData();
 
@@ -115,19 +122,16 @@ public abstract class BaseElasticTest {
                                       .put("index.number_of_replicas", replicas)
         );
 
-        elasticClient.indices().create(indexRequest, RequestOptions.DEFAULT);
+        transportClient.admin().indices().create(indexRequest).actionGet();
     }
 
     /**
      * Deletes all documents in all indexes and drops all indexes
      */
     protected void cleanElasticData() {
-        try {
-            // All documents are deleted when an index is deleted
-            elasticClient.indices().delete(new DeleteIndexRequest("*"), DEFAULT);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        // All documents are deleted when an index is deleted
+        transportClient.admin().indices().delete(new DeleteIndexRequest("*")).actionGet();
     }
 
     /**
@@ -136,7 +140,7 @@ public abstract class BaseElasticTest {
     protected void deleteDocuments() throws IOException {
         SearchRequest request = new SearchRequest("*");
         request.source().size(1000);
-        SearchResponse response = elasticClient.search(request, DEFAULT);
+        SearchResponse response = elasticClient.search(request);
 
         BulkRequest bulkRequest = new BulkRequest()
                 .setRefreshPolicy(RefreshPolicy.IMMEDIATE);
@@ -148,7 +152,12 @@ public abstract class BaseElasticTest {
             bulkRequest.add(deleteRequest);
         }
 
-        elasticClient.bulk(bulkRequest, DEFAULT);
+        elasticClient.bulk(bulkRequest);
+    }
+
+    protected void refreshIndex() throws IOException {
+        // Need to refresh index because the default bulk request doesn't do it and we may not see the result
+        transportClient.admin().indices().refresh(new RefreshRequest("my-index")).actionGet();
     }
 
     /**
@@ -190,7 +199,7 @@ public abstract class BaseElasticTest {
         }
 
         try {
-            BulkResponse response = elasticClient.bulk(request, RequestOptions.DEFAULT);
+            BulkResponse response = elasticClient.bulk(request);
             return Arrays.stream(response.getItems())
                          .map(BulkItemResponse::getId)
                          .collect(Collectors.toList());
@@ -205,7 +214,7 @@ public abstract class BaseElasticTest {
     }
 
     protected void assertSingleDocument(String id, String name) throws IOException {
-        SearchResponse response = elasticClient.search(new SearchRequest("my-index"), DEFAULT);
+        SearchResponse response = elasticClient.search(new SearchRequest("my-index"));
         SearchHit[] hits = response.getHits().getHits();
         assertThat(hits).hasSize(1);
         Map<String, Object> document = hits[0].getSourceAsMap();
@@ -216,7 +225,7 @@ public abstract class BaseElasticTest {
     }
 
     protected void assertNoDocuments(String index) throws IOException {
-        SearchResponse response = elasticClient.search(new SearchRequest(index), DEFAULT);
+        SearchResponse response = elasticClient.search(new SearchRequest(index));
         SearchHit[] hits = response.getHits().getHits();
         assertThat(hits).hasSize(0);
     }

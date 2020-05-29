@@ -29,6 +29,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.HashMap;
 
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -50,7 +51,7 @@ public class ElasticSinkBuilderTest extends PipelineTestSupport {
                     return builder;
                 })
                 .bulkRequestFn(() -> new BulkRequest().setRefreshPolicy(RefreshPolicy.IMMEDIATE))
-                .mapToRequestFn((String item) -> new IndexRequest("my-index"))
+                .mapToRequestFn((String item) -> new IndexRequest("my-index", "document").source(new HashMap<>()))
                 .build();
 
         p.readFrom(TestSources.items("a", "b", "c"))
