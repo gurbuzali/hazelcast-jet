@@ -3,10 +3,17 @@ title: Change Data Capture from MySQL
 description: How to monitor Change Data Capture data from a MySQL database in Jet.
 ---
 
-As we've seen in the [CDC section of our Sources and Sinks
- guide](../api/sources-sinks.md#cdc) of our, change data capture is
- especially important to Jet, because it allows for the **integration
- with legacy systems**.
+**Change data capture** refers to the process of **observing changes
+made to a database** and extracting them in a form usable by other
+systems, for the purposes of replication, analysis and many more.
+
+Change Data Capture is especially important to Jet, because it allows
+for the **streaming of changes from databases**, which can be
+efficiently processed by Jet.
+
+Implementation of CDC in Jet is based on
+[Debezium](https://debezium.io/), which is an open source distributed
+platform for change data capture.
 
 Let's see an example, how to process change events from a MySQL database
 in Jet.
@@ -285,12 +292,11 @@ This is how the code doing this looks like:
 package org.example;
 
 import com.hazelcast.jet.Jet;
-import com.hazelcast.jet.Util;
+import com.hazelcast.jet.cdc.CdcSinks;
 import com.hazelcast.jet.cdc.ChangeRecord;
-import com.hazelcast.jet.cdc.MySqlCdcSources;
+import com.hazelcast.jet.cdc.mysql.MySqlCdcSources;
 import com.hazelcast.jet.config.JobConfig;
 import com.hazelcast.jet.pipeline.Pipeline;
-import com.hazelcast.jet.pipeline.Sinks;
 import com.hazelcast.jet.pipeline.StreamSource;
 
 public class JetJob {
@@ -309,10 +315,10 @@ public class JetJob {
         Pipeline pipeline = Pipeline.create();
         pipeline.readFrom(source)
                 .withoutTimestamps()
-                .map(record -> record.value().toObject(Customer.class))
-                .map(customer -> Util.entry(customer.id, customer))
                 .peek()
-                .writeTo(Sinks.map("customers"));
+                .writeTo(CdcSinks.map("customers",
+                        r -> r.key().toMap().get("id"),
+                        r -> r.value().toObject(Customer.class).toString()));
 
         JobConfig cfg = new JobConfig().setName("mysql-monitor");
         Jet.bootstrappedInstance().newJob(pipeline, cfg);
