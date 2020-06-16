@@ -275,7 +275,8 @@ public abstract class CommonElasticSourcesTest extends BaseElasticTest {
 
         assertThatThrownBy(() -> submitJob(p))
                 .hasRootCauseInstanceOf(ResponseException.class)
-                .hasStackTraceContaining("no such index [non-existing-index]");
+                .hasStackTraceContaining("no such index")
+                .hasStackTraceContaining("non-existing-index");
     }
 
     @Test

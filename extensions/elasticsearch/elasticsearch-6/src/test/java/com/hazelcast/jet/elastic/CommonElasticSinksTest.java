@@ -20,6 +20,7 @@ import com.hazelcast.jet.JetException;
 import com.hazelcast.jet.pipeline.Pipeline;
 import com.hazelcast.jet.pipeline.Sink;
 import com.hazelcast.jet.pipeline.test.TestSources;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -29,7 +30,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -155,7 +155,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
 
         Sink<TestItem> elasticSink = ElasticSinks.elastic(
                 elasticClientSupplier(),
-                item -> new UpdateRequest("my-index", item.id).doc(item.asMap())
+                item -> new UpdateRequest("my-index", "document", item.id).doc(item.asMap())
         );
 
         Pipeline p = Pipeline.create();
@@ -177,7 +177,7 @@ public abstract class CommonElasticSinksTest extends BaseElasticTest {
 
         Sink<String> elasticSink = new ElasticSinkBuilder<>()
                 .clientFn(elasticClientSupplier())
-                .mapToRequestFn((String item) -> new DeleteRequest("my-index", item))
+                .mapToRequestFn((String item) -> new DeleteRequest("my-index", "document", item))
                 .bulkRequestFn(() -> new BulkRequest().setRefreshPolicy(RefreshPolicy.IMMEDIATE))
                 .build();
 
