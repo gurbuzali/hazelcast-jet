@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.hazelcast.jet.avro.model;
+package com.hazelcast.jet.hadoop.file.model;
 
 import org.apache.avro.Schema;
+import org.apache.avro.reflect.AvroName;
 import org.apache.avro.reflect.ReflectData;
 
 import java.io.Serializable;
@@ -27,6 +28,8 @@ public class User implements Serializable {
     public static final Schema SCHEMA = ReflectData.get().getSchema(User.class);
 
     private String name;
+
+    @AvroName("favorite_number") // TODO why do I need this?
     private int favoriteNumber;
 
     public User() {
@@ -65,5 +68,20 @@ public class User implements Serializable {
         return SCHEMA;
     }
 
+    @Override public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        User user = (User) o;
+        return favoriteNumber == user.favoriteNumber &&
+                Objects.equals(name, user.name);
+    }
+
+    @Override public int hashCode() {
+        return Objects.hash(name, favoriteNumber);
+    }
 
 }

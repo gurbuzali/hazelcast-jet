@@ -3,6 +3,8 @@ package com.hazelcast.jet.pipeline.file;
 import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.impl.util.IOUtil;
+import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
@@ -11,25 +13,25 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
 
-public class TextFileFormat implements FileFormat<Object, Object, String> {
+public class RawBytesFileFormat implements FileFormat<NullWritable, BytesWritable, byte[]> {
 
     private Charset utf8;
 
-    public TextFileFormat() {
+    public RawBytesFileFormat() {
         utf8 = StandardCharsets.UTF_8;
     }
 
-    public TextFileFormat(Charset utf8) {
+    public RawBytesFileFormat(Charset utf8) {
         this.utf8 = utf8;
     }
 
     @Override
-    public FunctionEx<? super InputStream, Stream<String>> mapFn() {
+    public FunctionEx<? super InputStream, Stream<byte[]>> mapFn() {
         return inputStream -> {
 
             byte[] bytes = IOUtil.readFully(inputStream);
 
-            return Stream.of(new String(bytes, utf8));
+            return Stream.of(bytes);
         };
     }
 
@@ -39,11 +41,12 @@ public class TextFileFormat implements FileFormat<Object, Object, String> {
             Job job = (Job) object;
 
             try {
+
                 @SuppressWarnings("unchecked")
                 Class<? extends InputFormat<?, ?>> format = (Class<? extends InputFormat<?, ?>>)
                         Thread.currentThread()
                               .getContextClassLoader()
-                              .loadClass("com.hazelcast.jet.hadoop.impl.WholeTextInputFormat");
+                              .loadClass("com.hazelcast.jet.hadoop.format.WholeFileInputFormat");
                 job.setInputFormatClass(format);
 
             } catch (ClassNotFoundException e) {
@@ -52,7 +55,7 @@ public class TextFileFormat implements FileFormat<Object, Object, String> {
         }
     }
 
-    @Override public BiFunctionEx<Object, Object, String> projectionFn() {
-        return (k, v) -> v.toString();
+    @Override public BiFunctionEx<NullWritable, BytesWritable, byte[]> projectionFn() {
+        return (k, v) -> v.copyBytes();
     }
 }

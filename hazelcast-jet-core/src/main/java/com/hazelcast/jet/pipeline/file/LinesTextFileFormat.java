@@ -1,6 +1,9 @@
 package com.hazelcast.jet.pipeline.file;
 
+import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -9,7 +12,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
 
-public class LinesTextFileFormat implements FileFormat<String> {
+public class LinesTextFileFormat implements FileFormat<Object, Object, String> {
 
     private Charset charset;
 
@@ -30,5 +33,18 @@ public class LinesTextFileFormat implements FileFormat<String> {
 
             return reader.lines();
         };
+    }
+
+    @Override
+    public void apply(Object object) {
+        if (object instanceof Job) {
+            Job job = (Job) object;
+            job.setInputFormatClass(TextInputFormat.class);
+        }
+    }
+
+    @Override
+    public BiFunctionEx<Object, Object, String> projectionFn() {
+        return (k, v) -> v.toString();
     }
 }
