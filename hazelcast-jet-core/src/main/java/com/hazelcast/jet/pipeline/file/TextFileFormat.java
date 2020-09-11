@@ -6,30 +6,31 @@ import com.hazelcast.jet.impl.util.IOUtil;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public class TextFileFormat implements FileFormat<Object, Object, String> {
 
-    private Charset utf8;
+    private String charset;
 
     public TextFileFormat() {
-        utf8 = StandardCharsets.UTF_8;
+        charset = "UTF-8";
     }
 
-    public TextFileFormat(Charset utf8) {
-        this.utf8 = utf8;
+    public TextFileFormat(String charset) {
+        this.charset = charset;
     }
 
     @Override
-    public FunctionEx<? super InputStream, Stream<String>> mapFn() {
-        return inputStream -> {
-
-            byte[] bytes = IOUtil.readFully(inputStream);
-
-            return Stream.of(new String(bytes, utf8));
+    public FunctionEx<Path, Stream<String>> mapFn() {
+        String thisCharset = charset;
+        return path -> {
+            byte[] bytes = IOUtil.readFully(new FileInputStream(path.toFile()));
+            return Stream.of(new String(bytes, Charset.forName(thisCharset)));
         };
     }
 

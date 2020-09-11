@@ -122,6 +122,13 @@
             <artifactId>jackson-core</artifactId>
             <version>${jackson.jr.version}</version>
         </dependency>
+
+        <!-- TODO we probably need to move the file formats to own module -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-csv</artifactId>
+            <version>${jackson.jr.version}</version>
+        </dependency>
         <dependency>
             <groupId>javax.cache</groupId>
             <artifactId>cache-api</artifactId>
@@ -156,6 +163,15 @@
             <version>${avro.version}</version>
             <scope>provided</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-avro</artifactId>
+            <version>${parquet.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+
         <!--TEST DEPENDENCIES-->
         <dependency>
             <groupId>org.apache.activemq</groupId>

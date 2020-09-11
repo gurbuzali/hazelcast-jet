@@ -6,31 +6,29 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
+import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public class LinesTextFileFormat implements FileFormat<Object, Object, String> {
 
-    private Charset charset;
+
+    private String charset;
 
     public LinesTextFileFormat() {
-        charset = StandardCharsets.UTF_8;
+        charset = "UTF-8";
     }
 
-    public LinesTextFileFormat(Charset charset) {
+    public LinesTextFileFormat(String charset) {
         this.charset = charset;
     }
 
     @Override
-    public FunctionEx<? super InputStream, Stream<String>> mapFn() {
-        return responseInputStream -> {
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(responseInputStream, charset));
-
+    public FunctionEx<Path, Stream<String>> mapFn() {
+        String thisCharset = charset;
+        return path -> {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path.toFile()), thisCharset));
             return reader.lines();
         };
     }

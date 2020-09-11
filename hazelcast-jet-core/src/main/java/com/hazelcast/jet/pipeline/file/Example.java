@@ -20,7 +20,7 @@ public class Example {
                                                     .build();
 
         BatchSource<String> sourceLines = FileSources.s3("s3a://my-bucket/my/path/*")
-                                                     .withFormat(new LinesTextFileFormat(StandardCharsets.UTF_8))
+                                                     .withFormat(new LinesTextFileFormat("UTF-8"))
                                                      .build();
 
         /*BatchSource<String> avro = FileSources.files("s3a://my-bucket/my/path/*")

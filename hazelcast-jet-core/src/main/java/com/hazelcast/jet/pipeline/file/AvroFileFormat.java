@@ -3,15 +3,19 @@ package com.hazelcast.jet.pipeline.file;
 import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileReader;
 import org.apache.avro.mapred.AvroKey;
 import org.apache.avro.mapreduce.AvroJob;
 import org.apache.avro.mapreduce.AvroKeyInputFormat;
 import org.apache.avro.reflect.ReflectData;
+import org.apache.avro.reflect.ReflectDatumReader;
+import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Job;
 
-import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class AvroFileFormat<T> implements FileFormat<AvroKey<T>, NullWritable, T> {
 
@@ -19,8 +23,21 @@ public class AvroFileFormat<T> implements FileFormat<AvroKey<T>, NullWritable, T
     private Class<T> reflectClass;
 
     @Override
-    public FunctionEx<? super InputStream, Stream<T>> mapFn() {
-        return null;
+    public FunctionEx<Path, Stream<T>> mapFn() {
+        Class<T> thisReflectClass = this.reflectClass;
+        if (reflect) {
+            return (path) -> {
+                ReflectDatumReader<T> reflectDatumReader = new ReflectDatumReader<T>(thisReflectClass);
+                DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
+                return StreamSupport.stream(reader.spliterator(), false);
+            };
+        } else {
+            return (path) -> {
+                SpecificDatumReader<T> reflectDatumReader = new SpecificDatumReader<>();
+                DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
+                return StreamSupport.stream(reader.spliterator(), false);
+            };
+        }
     }
 
     @Override

@@ -1,7 +1,10 @@
 package com.hazelcast.jet.pipeline.file;
 
 import com.hazelcast.jet.pipeline.BatchSource;
+import com.hazelcast.jet.pipeline.Sources;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,7 +71,20 @@ public class FileSourceBuilder<T> {
                 throw new RuntimeException(e);
             }
         } else {
-            return null;
+            Path p = Paths.get(path);
+
+            String directory;
+            String glob = "*";
+            if (p.toFile().isDirectory()) {
+                directory = p.toString();
+            } else {
+                directory = p.getParent().toString();
+                glob = p.getFileName().toString();
+            }
+
+            return Sources.filesBuilder(directory)
+                          .glob(glob)
+                          .build(format.mapFn());
         }
     }
 }

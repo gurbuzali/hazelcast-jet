@@ -1,36 +1,27 @@
 package com.hazelcast.jet.hadoop.file;
 
-import com.hazelcast.jet.JetInstance;
-import com.hazelcast.jet.core.JetTestSupport;
 import com.hazelcast.jet.pipeline.BatchSource;
-import com.hazelcast.jet.pipeline.Pipeline;
+import com.hazelcast.jet.pipeline.file.FileSourceBuilder;
 import com.hazelcast.jet.pipeline.file.FileSources;
+import com.hazelcast.jet.pipeline.file.LinesTextFileFormat;
 import com.hazelcast.jet.pipeline.file.TextFileFormat;
-import com.hazelcast.jet.pipeline.test.Assertions;
 import org.junit.Test;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class TextFileTest extends JetTestSupport {
+public class TextFileTest extends BaseFileTest {
 
     @Test
-    public void readTextFile() {
+    public void readTextFileAsSingleItem() {
+        FileSourceBuilder<String> source = FileSources.files("src/test/resources/file.txt")
+                                                      .withFormat(new TextFileFormat());
 
-        BatchSource<String> source = FileSources.files("src/test/resources/file.txt")
-                                                .useHadoopForLocalFiles()
-                                                .withFormat(new TextFileFormat())
-                                                .build();
+        assertItemsInSource(source, "Text contents of\nthe file.\n");
+    }
 
-        Pipeline p = Pipeline.create();
+    @Test
+    public void readTextFileAsLines() {
+        FileSourceBuilder<String> source = FileSources.files("src/test/resources/file.txt")
+                                                      .withFormat(new LinesTextFileFormat());
 
-        p.readFrom(source)
-         .apply(Assertions.assertCollected(collected -> {
-             assertThat(collected).containsOnly("Text contents of\nthe file.\n");
-         }));
-
-
-        JetInstance jet = createJetMember();
-        jet.newJob(p).join();
+        assertItemsInSource(source, "Text contents of", "the file.");
     }
 }
