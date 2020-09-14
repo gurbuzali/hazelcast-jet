@@ -1,13 +1,12 @@
 package com.hazelcast.jet.hadoop.file;
 
 import com.hazelcast.jet.hadoop.file.model.User;
-import com.hazelcast.jet.pipeline.BatchSource;
 import com.hazelcast.jet.pipeline.file.CsvFileFormat;
 import com.hazelcast.jet.pipeline.file.FileSourceBuilder;
 import com.hazelcast.jet.pipeline.file.FileSources;
 import org.junit.Test;
 
-public class CsvFileTest extends BaseFileTest {
+public class CsvFileFormatTest extends BaseFileFormatTest {
 
     @Test
     public void shouldReadCsvFile() throws Exception {

@@ -8,15 +8,15 @@ import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.file.Path;
 import java.util.stream.Stream;
 
-import static com.hazelcast.jet.impl.util.ExceptionUtil.sneakyThrow;
+import static com.hazelcast.jet.impl.util.Util.uncheckCall;
+import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 
-public class JsonFileFormat<T> implements FileFormat<LongWritable, T, T> {
+public class JsonFileFormat<T> extends AbstractFileFormat<LongWritable, T, T>
+        implements FileFormat<LongWritable, T, T> {
 
     private final Class<T> clazz;
     private String charset = "UTF-8";
@@ -26,19 +26,15 @@ public class JsonFileFormat<T> implements FileFormat<LongWritable, T, T> {
     }
 
     @Override
-    public FunctionEx<Path, Stream<T>> mapFn() {
+    public FunctionEx<InputStream, Stream<T>> mapInputStreamFn() {
         String thisCharset = charset;
         Class<T> thisClazz = clazz;
-        return path -> {
-            // TODO close this correctly
-            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path.toFile()), thisCharset));
-            return reader.lines().map(line -> {
-                try {
-                    return JsonUtil.beanFrom(line, thisClazz);
-                } catch (IOException e) {
-                    throw sneakyThrow(e);
-                }
-            });
+        return is -> {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, thisCharset));
+
+            return reader.lines()
+                         .map(line -> uncheckCall(() -> JsonUtil.beanFrom(line, thisClazz)))
+                         .onClose(() -> uncheckRun(reader::close));
         };
     }
 

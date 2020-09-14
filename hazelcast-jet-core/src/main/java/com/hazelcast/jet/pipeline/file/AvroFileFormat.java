@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static com.hazelcast.jet.impl.util.Util.uncheckRun;
+
 public class AvroFileFormat<T> implements FileFormat<AvroKey<T>, NullWritable, T> {
 
     private boolean reflect;
@@ -29,13 +31,15 @@ public class AvroFileFormat<T> implements FileFormat<AvroKey<T>, NullWritable, T
             return (path) -> {
                 ReflectDatumReader<T> reflectDatumReader = new ReflectDatumReader<T>(thisReflectClass);
                 DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
-                return StreamSupport.stream(reader.spliterator(), false);
+                return StreamSupport.stream(reader.spliterator(), false)
+                                    .onClose(() -> uncheckRun(reader::close));
             };
         } else {
             return (path) -> {
                 SpecificDatumReader<T> reflectDatumReader = new SpecificDatumReader<>();
                 DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
-                return StreamSupport.stream(reader.spliterator(), false);
+                return StreamSupport.stream(reader.spliterator(), false)
+                                    .onClose(() -> uncheckRun(reader::close));
             };
         }
     }

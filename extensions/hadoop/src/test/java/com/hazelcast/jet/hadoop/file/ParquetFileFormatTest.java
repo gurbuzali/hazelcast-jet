@@ -1,7 +1,6 @@
 package com.hazelcast.jet.hadoop.file;
 
 import com.hazelcast.jet.hadoop.file.generated.SpecificUser;
-import com.hazelcast.jet.pipeline.file.AvroFileFormat;
 import com.hazelcast.jet.pipeline.file.FileSourceBuilder;
 import com.hazelcast.jet.pipeline.file.FileSources;
 import com.hazelcast.jet.pipeline.file.ParquetFileFormat;
@@ -17,7 +16,7 @@ import org.junit.runners.Parameterized.Parameters;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class ParquetFileTest extends BaseFileTest {
+public class ParquetFileFormatTest extends BaseFileFormatTest {
 
     // Parquet had a dependency on Hadoop so it does not make sense to run it without it
     @Parameters(name = "{index}: useHadoop={0}")

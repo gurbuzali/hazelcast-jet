@@ -8,14 +8,13 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.stream.Stream;
 
-public class RawBytesFileFormat implements FileFormat<NullWritable, BytesWritable, byte[]> {
+public class RawBytesFileFormat extends AbstractFileFormat<NullWritable, BytesWritable, byte[]>
+        implements FileFormat<NullWritable, BytesWritable, byte[]> {
 
     private Charset utf8;
 
@@ -28,13 +27,8 @@ public class RawBytesFileFormat implements FileFormat<NullWritable, BytesWritabl
     }
 
     @Override
-    public FunctionEx<Path, Stream<byte[]>> mapFn() {
-        return path -> {
-
-            byte[] bytes = IOUtil.readFully(new FileInputStream(path.toFile()));
-
-            return Stream.of(bytes);
-        };
+    public FunctionEx<InputStream, Stream<byte[]>> mapInputStreamFn() {
+        return is -> Stream.of(IOUtil.readFully(is));
     }
 
     @Override

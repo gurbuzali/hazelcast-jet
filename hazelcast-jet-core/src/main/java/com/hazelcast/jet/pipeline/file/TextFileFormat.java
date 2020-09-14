@@ -6,14 +6,12 @@ import com.hazelcast.jet.impl.util.IOUtil;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.stream.Stream;
 
-public class TextFileFormat implements FileFormat<Object, Object, String> {
+public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
+        implements FileFormat<Object, Object, String> {
 
     private String charset;
 
@@ -26,10 +24,10 @@ public class TextFileFormat implements FileFormat<Object, Object, String> {
     }
 
     @Override
-    public FunctionEx<Path, Stream<String>> mapFn() {
+    public FunctionEx<InputStream, Stream<String>> mapInputStreamFn() {
         String thisCharset = charset;
-        return path -> {
-            byte[] bytes = IOUtil.readFully(new FileInputStream(path.toFile()));
+        return is -> {
+            byte[] bytes = IOUtil.readFully(is);
             return Stream.of(new String(bytes, Charset.forName(thisCharset)));
         };
     }
@@ -53,7 +51,8 @@ public class TextFileFormat implements FileFormat<Object, Object, String> {
         }
     }
 
-    @Override public BiFunctionEx<Object, Object, String> projectionFn() {
+    @Override
+    public BiFunctionEx<Object, Object, String> projectionFn() {
         return (k, v) -> v.toString();
     }
 }

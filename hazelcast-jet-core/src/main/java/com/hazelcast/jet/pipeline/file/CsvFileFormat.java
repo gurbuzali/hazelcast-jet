@@ -10,13 +10,12 @@ import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class CsvFileFormat<T> implements FileFormat<NullWritable, T, T> {
+public class CsvFileFormat<T> extends AbstractFileFormat<NullWritable, T, T> implements FileFormat<NullWritable, T, T> {
 
     private final Class<T> clazz;
     private final CsvMapper mapper;
@@ -31,13 +30,13 @@ public class CsvFileFormat<T> implements FileFormat<NullWritable, T, T> {
     }
 
     @Override
-    public FunctionEx<Path, Stream<T>> mapFn() {
+    public FunctionEx<InputStream, Stream<T>> mapInputStreamFn() {
         ObjectReader thisObjectReader = this.reader;
-        return (path) -> StreamSupport.stream(
+        return is -> StreamSupport.stream(
                 Spliterators.spliteratorUnknownSize(
-                        thisObjectReader.readValues(path.toFile()),
-                        Spliterator.ORDERED)
-                , false);
+                        thisObjectReader.readValues(is),
+                        Spliterator.ORDERED),
+                false);
     }
 
     @Override

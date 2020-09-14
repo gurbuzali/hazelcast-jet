@@ -7,7 +7,7 @@ import com.hazelcast.jet.pipeline.file.FileSources;
 import com.hazelcast.jet.pipeline.file.JsonFileFormat;
 import org.junit.Test;
 
-public class JsonFileTest extends BaseFileTest {
+public class JsonFileFormatTest extends BaseFileFormatTest {
 
     @Test
     public void shouldReadJsonLinesFile() throws Exception {

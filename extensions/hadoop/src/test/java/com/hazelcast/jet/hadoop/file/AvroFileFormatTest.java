@@ -14,7 +14,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-public class AvroFileTest extends BaseFileTest {
+public class AvroFileFormatTest extends BaseFileFormatTest {
 
     @Test
     public void shouldReadAvroWithSchema() throws Exception {

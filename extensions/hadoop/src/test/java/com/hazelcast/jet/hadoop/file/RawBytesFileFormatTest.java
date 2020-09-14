@@ -1,13 +1,12 @@
 package com.hazelcast.jet.hadoop.file;
 
-import com.hazelcast.jet.pipeline.BatchSource;
 import com.hazelcast.jet.pipeline.file.FileSourceBuilder;
 import com.hazelcast.jet.pipeline.file.FileSources;
 import org.junit.Test;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class RawFileTest extends BaseFileTest {
+public class RawBytesFileFormatTest extends BaseFileFormatTest {
 
     @Test
     public void testRawFile() {
