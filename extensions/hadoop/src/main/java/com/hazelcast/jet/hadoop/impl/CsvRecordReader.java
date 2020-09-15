@@ -1,17 +1,29 @@
+/*
+ * Copyright 2020 Hazelcast Inc.
+ *
+ * Licensed under the Hazelcast Community License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://hazelcast.com/hazelcast-community-license
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hazelcast.jet.hadoop.impl;
 
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
-import org.apache.avro.JsonProperties.Null;
-import org.apache.commons.io.output.NullWriter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -30,7 +42,7 @@ public class CsvRecordReader extends RecordReader<NullWritable, Object> {
 
     private ObjectReader reader;
 
-    Object current;
+    private Object current;
     private MappingIterator<Object> iterator;
 
     @Override public void initialize(
