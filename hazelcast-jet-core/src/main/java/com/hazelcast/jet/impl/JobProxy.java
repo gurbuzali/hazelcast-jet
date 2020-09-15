@@ -23,7 +23,6 @@ import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.jet.Job;
 import com.hazelcast.jet.JobStateSnapshot;
 import com.hazelcast.jet.config.JobConfig;
-import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.JobStatus;
 import com.hazelcast.jet.core.metrics.JobMetrics;
 import com.hazelcast.jet.impl.metrics.RawJobMetrics;
@@ -31,6 +30,7 @@ import com.hazelcast.jet.impl.operation.GetJobConfigOperation;
 import com.hazelcast.jet.impl.operation.GetJobMetricsOperation;
 import com.hazelcast.jet.impl.operation.GetJobStatusOperation;
 import com.hazelcast.jet.impl.operation.GetJobSubmissionTimeOperation;
+import com.hazelcast.jet.impl.operation.GetJobSuspensionCauseOperation;
 import com.hazelcast.jet.impl.operation.JoinSubmittedJobOperation;
 import com.hazelcast.jet.impl.operation.ResumeJobOperation;
 import com.hazelcast.jet.impl.operation.SubmitJobOperation;
@@ -58,14 +58,24 @@ public class JobProxy extends AbstractJobProxy<NodeEngineImpl> {
         super(nodeEngine, jobId);
     }
 
-    public JobProxy(NodeEngineImpl engine, long jobId, DAG dag, JobConfig config) {
-        super(engine, jobId, dag, config);
+    public JobProxy(NodeEngineImpl engine, long jobId, Object jobDefinition, JobConfig config) {
+        super(engine, jobId, jobDefinition, config);
     }
 
     @Nonnull @Override
     public JobStatus getStatus() {
         try {
             return this.<JobStatus>invokeOp(new GetJobStatusOperation(getId())).get();
+        } catch (Throwable t) {
+            throw rethrow(t);
+        }
+    }
+
+    @Nonnull
+    @Override
+    public String getSuspensionCause() {
+        try {
+            return this.<String>invokeOp(new GetJobSuspensionCauseOperation(getId())).get();
         } catch (Throwable t) {
             throw rethrow(t);
         }

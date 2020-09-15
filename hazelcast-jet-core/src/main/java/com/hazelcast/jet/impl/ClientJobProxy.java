@@ -23,7 +23,6 @@ import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.jet.Job;
 import com.hazelcast.jet.JobStateSnapshot;
 import com.hazelcast.jet.config.JobConfig;
-import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.JobStatus;
 import com.hazelcast.jet.core.metrics.JobMetrics;
 import com.hazelcast.jet.impl.client.protocol.codec.JetExportSnapshotCodec;
@@ -32,6 +31,7 @@ import com.hazelcast.jet.impl.client.protocol.codec.JetGetJobMetricsCodec;
 import com.hazelcast.jet.impl.client.protocol.codec.JetGetJobStatusCodec;
 import com.hazelcast.jet.impl.client.protocol.codec.JetGetJobStatusCodec.ResponseParameters;
 import com.hazelcast.jet.impl.client.protocol.codec.JetGetJobSubmissionTimeCodec;
+import com.hazelcast.jet.impl.client.protocol.codec.JetGetJobSuspensionCauseCodec;
 import com.hazelcast.jet.impl.client.protocol.codec.JetJoinSubmittedJobCodec;
 import com.hazelcast.jet.impl.client.protocol.codec.JetResumeJobCodec;
 import com.hazelcast.jet.impl.client.protocol.codec.JetSubmitJobCodec;
@@ -63,8 +63,8 @@ public class ClientJobProxy extends AbstractJobProxy<JetClientInstanceImpl> {
         super(client, jobId);
     }
 
-    ClientJobProxy(JetClientInstanceImpl client, long jobId, DAG dag, JobConfig config) {
-        super(client, jobId, dag, config);
+    ClientJobProxy(JetClientInstanceImpl client, long jobId, Object jobDefinition, JobConfig config) {
+        super(client, jobId, jobDefinition, config);
     }
 
     @Nonnull
@@ -75,6 +75,16 @@ public class ClientJobProxy extends AbstractJobProxy<JetClientInstanceImpl> {
             ClientMessage response = invocation(request, masterUuid()).invoke().get();
             ResponseParameters parameters = JetGetJobStatusCodec.decodeResponse(response);
             return JobStatus.values()[parameters.response];
+        });
+    }
+
+    @Nonnull
+    @Override
+    public String getSuspensionCause() {
+        return callAndRetryIfTargetNotFound(()  -> {
+            ClientMessage request = JetGetJobSuspensionCauseCodec.encodeRequest(getId());
+            ClientMessage response = invocation(request, masterUuid()).invoke().get();
+            return JetGetJobSuspensionCauseCodec.decodeResponse(response);
         });
     }
 

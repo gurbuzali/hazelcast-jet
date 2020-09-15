@@ -44,6 +44,7 @@ import com.hazelcast.jet.impl.operation.GetLocalJobMetricsOperation.ExecutionNot
 import com.hazelcast.jet.impl.operation.InitExecutionOperation;
 import com.hazelcast.jet.impl.operation.StartExecutionOperation;
 import com.hazelcast.jet.impl.operation.TerminateExecutionOperation;
+import com.hazelcast.jet.impl.util.ExceptionUtil;
 import com.hazelcast.jet.impl.util.LoggingUtil;
 import com.hazelcast.jet.impl.util.NonCompletableFuture;
 import com.hazelcast.jet.impl.util.Util;
@@ -92,7 +93,6 @@ import static com.hazelcast.jet.impl.SnapshotValidator.validateSnapshot;
 import static com.hazelcast.jet.impl.TerminationMode.ActionAfterTerminate.RESTART;
 import static com.hazelcast.jet.impl.TerminationMode.ActionAfterTerminate.SUSPEND;
 import static com.hazelcast.jet.impl.TerminationMode.CANCEL_FORCEFUL;
-import static com.hazelcast.jet.impl.TerminationMode.CANCEL_GRACEFUL;
 import static com.hazelcast.jet.impl.TerminationMode.RESTART_GRACEFUL;
 import static com.hazelcast.jet.impl.execution.init.CustomClassLoadedObject.deserializeWithCustomClassLoader;
 import static com.hazelcast.jet.impl.execution.init.ExecutionPlanBuilder.createExecutionPlans;
@@ -243,7 +243,7 @@ public class MasterJobContext {
                 return null;
             }
             if (mc.jobExecutionRecord().isSuspended()) {
-                mc.jobExecutionRecord().setSuspended(false);
+                mc.jobExecutionRecord().clearSuspended();
                 mc.writeJobExecutionRecord(false);
                 mc.setJobStatus(NOT_RUNNING);
             }
@@ -299,9 +299,8 @@ public class MasterJobContext {
             @SuppressWarnings("SameParameterValue") boolean allowWhileExportingSnapshot
     ) {
         mc.coordinationService().assertOnCoordinatorThread();
-        // Switch graceful method to forceful if we don't do snapshots, except for graceful
-        // cancellation, which is allowed even if not snapshotting.
-        if (mc.jobConfig().getProcessingGuarantee() == NONE && mode != CANCEL_GRACEFUL) {
+        // Switch graceful method to forceful if we don't do snapshots
+        if (mc.jobConfig().getProcessingGuarantee() == NONE) {
             mode = mode.withoutTerminalSnapshot();
         }
 
@@ -522,7 +521,7 @@ public class MasterJobContext {
             logger.fine(opName + " of " + mc.jobIdString() + " terminated after a terminal snapshot");
             TerminationMode mode = requestedTerminationMode;
             assert mode != null && mode.isWithTerminalSnapshot() : "mode=" + mode;
-            return mode == CANCEL_GRACEFUL ? new CancellationException() : new JobTerminateRequestedException(mode);
+            return new JobTerminateRequestedException(mode);
         }
 
         // If all exceptions are of certain type, treat it as TopologyChangedException
@@ -615,10 +614,6 @@ public class MasterJobContext {
                 }
                 completeVertices(failure);
 
-                // reset state for the next execution
-                boolean wasCancelled = isCancelled();
-                requestedTerminationMode = null;
-                executionFailureCallback = null;
                 ActionAfterTerminate terminationModeAction = failure instanceof JobTerminateRequestedException
                         ? ((JobTerminateRequestedException) failure).mode().actionAfterTerminate() : null;
                 mc.snapshotContext().onExecutionTerminated();
@@ -627,18 +622,23 @@ public class MasterJobContext {
                 if (terminationModeAction == RESTART) {
                     mc.setJobStatus(NOT_RUNNING);
                     nonSynchronizedAction = () -> mc.coordinationService().restartJob(mc.jobId());
-                } else if (!wasCancelled && isRestartableException(failure) && mc.jobConfig().isAutoScaling()) {
+                } else if (!isCancelled() && isRestartableException(failure) && mc.jobConfig().isAutoScaling()) {
                     // if restart is due to a failure, schedule a restart after a delay
                     scheduleRestart();
                     nonSynchronizedAction = NO_OP;
                 } else if (terminationModeAction == SUSPEND
                         || isRestartableException(failure)
-                        && !wasCancelled
+                        && !isCancelled()
                         && !mc.jobConfig().isAutoScaling()
                         && mc.jobConfig().getProcessingGuarantee() != NONE
                 ) {
                     mc.setJobStatus(SUSPENDED);
-                    mc.jobExecutionRecord().setSuspended(true);
+                    mc.jobExecutionRecord().setSuspended("Requested by user");
+                    nonSynchronizedAction = () -> mc.writeJobExecutionRecord(false);
+                } else if (failure != null && !isCancelled() && mc.jobConfig().isSuspendOnFailure()) {
+                    mc.setJobStatus(SUSPENDED);
+                    mc.jobExecutionRecord().setSuspended("Execution failure:\n" +
+                            ExceptionUtil.stackTraceToString(failure));
                     nonSynchronizedAction = () -> mc.writeJobExecutionRecord(false);
                 } else {
                     mc.setJobStatus(isSuccess(failure) ? COMPLETED : FAILED);
@@ -646,19 +646,22 @@ public class MasterJobContext {
                         logger.fine("Cancelling job " + mc.jobIdString() + " locally: member (local or remote) reset. " +
                                 "We don't delete job metadata: job will restart on majority cluster");
                         setFinalResult(new CancellationException());
-                        return;
+                    } else {
+                        mc.coordinationService()
+                          .completeJob(mc, failure)
+                          .whenComplete(withTryCatch(logger, (r, f) -> {
+                              if (f != null) {
+                                  logger.warning("Completion of " + mc.jobIdString() + " failed", f);
+                              } else {
+                                  setFinalResult(failure);
+                              }
+                          }));
                     }
-                    mc.coordinationService()
-                      .completeJob(mc, failure)
-                      .whenComplete(withTryCatch(logger, (r, f) -> {
-                          if (f != null) {
-                              logger.warning("Completion of " + mc.jobIdString() + " failed", f);
-                          } else {
-                              setFinalResult(failure);
-                          }
-                      }));
                     nonSynchronizedAction = NO_OP;
                 }
+                // reset the state for the next execution
+                requestedTerminationMode = null;
+                executionFailureCallback = null;
             } finally {
                 mc.unlock();
             }

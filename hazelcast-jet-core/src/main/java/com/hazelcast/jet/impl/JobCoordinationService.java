@@ -19,6 +19,7 @@ package com.hazelcast.jet.impl;
 import com.hazelcast.cluster.ClusterState;
 import com.hazelcast.cluster.impl.MemberImpl;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
+import com.hazelcast.function.FunctionEx;
 import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.metrics.MetricDescriptor;
@@ -44,6 +45,7 @@ import com.hazelcast.jet.impl.metrics.RawJobMetrics;
 import com.hazelcast.jet.impl.observer.ObservableImpl;
 import com.hazelcast.jet.impl.observer.WrappedThrowable;
 import com.hazelcast.jet.impl.operation.NotifyMemberShutdownOperation;
+import com.hazelcast.jet.impl.pipeline.PipelineImpl;
 import com.hazelcast.jet.impl.util.LoggingUtil;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.ringbuffer.OverflowPolicy;
@@ -180,7 +182,7 @@ public class JobCoordinationService {
         executionService.schedule(COORDINATOR_EXECUTOR_NAME, this::scanJobs, 0, MILLISECONDS);
     }
 
-    public CompletableFuture<Void> submitJob(long jobId, Data serializedDag, Data serializedConfig) {
+    public CompletableFuture<Void> submitJob(long jobId, Data serializedJobDefinition, Data serializedConfig) {
         CompletableFuture<Void> res = new CompletableFuture<>();
         submitToCoordinatorThread(() -> {
             MasterContext masterContext;
@@ -200,10 +202,19 @@ public class JobCoordinationService {
                 }
 
                 int quorumSize = config.isSplitBrainProtectionEnabled() ? getQuorumSize() : 0;
-                DAG dag = deserializeDag(jobId, config, serializedDag);
+                Object jobDefinition = deserializeJobDefinition(jobId, config, serializedJobDefinition);
+                DAG dag;
+                Data serializedDag;
+                if (jobDefinition instanceof PipelineImpl) {
+                    dag = ((PipelineImpl) jobDefinition).toDag();
+                    serializedDag = nodeEngine().getSerializationService().toData(dag);
+                } else {
+                    dag = (DAG) jobDefinition;
+                    serializedDag = serializedJobDefinition;
+                }
                 Set<String> ownedObservables = ownedObservables(dag);
                 JobRecord jobRecord = new JobRecord(jobId, serializedDag, dagToJson(dag), config, ownedObservables);
-                JobExecutionRecord jobExecutionRecord = new JobExecutionRecord(jobId, quorumSize, false);
+                JobExecutionRecord jobExecutionRecord = new JobExecutionRecord(jobId, quorumSize);
                 masterContext = createMasterContext(jobRecord, jobExecutionRecord);
 
                 boolean hasDuplicateJobName;
@@ -360,7 +371,7 @@ public class JobCoordinationService {
                     }
                     logger.fine("Ignoring cancellation of a completed job " + idToString(jobId));
                 },
-                jobExecutionRecord -> {
+                jobRecord -> {
                     // we'll eventually learn of the job through scanning of records or from a join operation
                     throw new RetryableHazelcastException("No MasterContext found for job " + idToString(jobId) + " for "
                             + terminationMode);
@@ -416,8 +427,40 @@ public class JobCoordinationService {
                             : jobStatus;
                 },
                 JobResult::getJobStatus,
-                null,
+                jobRecord -> NOT_RUNNING,
                 jobExecutionRecord -> jobExecutionRecord.isSuspended() ? SUSPENDED : NOT_RUNNING
+        );
+    }
+
+    /**
+     * Returns the reason why this job has been suspended in a human-readable
+     * form.
+     * <p>
+     * Fails with {@link JobNotFoundException} if the requested job is not found.
+     * <p>
+     * Fails with {@link IllegalStateException} if the requested job is not
+     * currently in a suspended state.
+     */
+    public CompletableFuture<String> getJobSuspensionCause(long jobId) {
+        FunctionEx<JobExecutionRecord, String> jobExecutionRecordHandler = jobExecutionRecord -> {
+            String cause = jobExecutionRecord.getSuspensionCause();
+            if (cause == null) {
+                throw new IllegalStateException("Job not suspended");
+            }
+            return cause;
+        };
+        return callWithJob(jobId,
+                mc -> {
+                    JobExecutionRecord jobExecutionRecord = mc.jobExecutionRecord();
+                    return jobExecutionRecordHandler.apply(jobExecutionRecord);
+                },
+                jobResult -> {
+                    throw new IllegalStateException("Job not suspended");
+                },
+                jobRecord -> {
+                    throw new IllegalStateException("Job not suspended");
+                },
+                jobExecutionRecordHandler
         );
     }
 
@@ -433,7 +476,7 @@ public class JobCoordinationService {
                     List<RawJobMetrics> metrics = jobRepository.getJobMetrics(jobId);
                     cf.complete(metrics != null ? metrics : emptyList());
                 },
-                record -> cf.complete(emptyList())
+                jobRecord -> cf.complete(emptyList())
         );
         return cf;
     }
@@ -457,7 +500,7 @@ public class JobCoordinationService {
                 jobResult -> {
                     throw new IllegalStateException("Job already completed");
                 },
-                jobExecutionRecord -> {
+                jobRecord -> {
                     throw new RetryableHazelcastException("Job " + idToString(jobId) + " not yet discovered");
                 }
         );
@@ -560,17 +603,22 @@ public class JobCoordinationService {
             long jobId,
             @Nonnull Consumer<MasterContext> masterContextHandler,
             @Nonnull Consumer<JobResult> jobResultHandler,
-            @Nullable Consumer<JobExecutionRecord> jobExecutionRecordHandler
+            @Nonnull Consumer<JobRecord> jobRecordHandler
     ) {
         return callWithJob(jobId,
                 toNullFunction(masterContextHandler),
                 toNullFunction(jobResultHandler),
-                toNullFunction(null),
-                toNullFunction(jobExecutionRecordHandler)
+                toNullFunction(jobRecordHandler),
+                null
         );
     }
 
-    private <T, R> Function<T, R> toNullFunction(Consumer<T> consumer) {
+    /**
+     * Returns a function that passes its argument to the given {@code
+     * consumer} and returns {@code null}.
+     */
+    @Nonnull
+    private <T, R> Function<T, R> toNullFunction(@Nonnull Consumer<T> consumer) {
         return val -> {
             consumer.accept(val);
             return null;
@@ -581,13 +629,10 @@ public class JobCoordinationService {
             long jobId,
             @Nonnull Function<MasterContext, T> masterContextHandler,
             @Nonnull Function<JobResult, T> jobResultHandler,
-            @Nullable Function<JobRecord, T> jobRecordHandler,
+            @Nonnull Function<JobRecord, T> jobRecordHandler,
             @Nullable Function<JobExecutionRecord, T> jobExecutionRecordHandler
     ) {
         assertIsMaster("Cannot do this task on non-master. jobId=" + idToString(jobId));
-        if (jobRecordHandler == null && jobExecutionRecordHandler == null) {
-            throw new IllegalArgumentException();
-        }
 
         return submitToCoordinatorThread(() -> {
             // when job is finalized, actions happen in this order:
@@ -619,7 +664,7 @@ public class JobCoordinationService {
                 return jobExecutionRecordHandler.apply(jobExRecord);
             }
             JobRecord jobRecord;
-            if (jobRecordHandler != null && (jobRecord = jobRepository.getJobRecord(jobId)) != null) {
+            if ((jobRecord = jobRepository.getJobRecord(jobId)) != null) {
                 return jobRecordHandler.apply(jobRecord);
             }
 
@@ -810,9 +855,9 @@ public class JobCoordinationService {
                 && getInternalPartitionService().getPartitionStateManager().isInitialized();
     }
 
-    private DAG deserializeDag(long jobId, JobConfig jobConfig, Data dagData) {
+    private Object deserializeJobDefinition(long jobId, JobConfig jobConfig, Data jobDefinitionData) {
         ClassLoader classLoader = jetService.getJobExecutionService().getClassLoader(jobConfig, jobId);
-        return deserializeWithCustomClassLoader(nodeEngine.getSerializationService(), classLoader, dagData);
+        return deserializeWithCustomClassLoader(nodeEngine().getSerializationService(), classLoader, jobDefinitionData);
     }
 
     private String dagToJson(DAG dag) {
@@ -954,7 +999,7 @@ public class JobCoordinationService {
     }
 
     private JobExecutionRecord ensureExecutionRecord(long jobId, JobExecutionRecord record) {
-        return record != null ? record : new JobExecutionRecord(jobId, getQuorumSize(), false);
+        return record != null ? record : new JobExecutionRecord(jobId, getQuorumSize());
     }
 
     @SuppressWarnings("WeakerAccess") // used by jet-enterprise
