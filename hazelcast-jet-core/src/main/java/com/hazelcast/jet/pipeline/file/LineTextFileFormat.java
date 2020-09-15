@@ -2,7 +2,6 @@ package com.hazelcast.jet.pipeline.file;
 
 import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
-import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 
 import java.io.BufferedReader;
@@ -32,7 +31,7 @@ public class LineTextFileFormat extends AbstractFileFormat<Object, Object, Strin
         return is -> {
             BufferedReader reader = new BufferedReader(new InputStreamReader(is, thisCharset));
             return reader.lines()
-                         .onClose(() -> uncheckRun(reader::close));
+                    .onClose(() -> uncheckRun(reader::close));
         };
     }
 

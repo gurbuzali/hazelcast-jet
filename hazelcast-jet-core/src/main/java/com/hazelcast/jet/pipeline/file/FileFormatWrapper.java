@@ -24,8 +24,9 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * FileFormat wrapper that allows to map item into Object[] (or could be any generic type)
- *
+ * FileFormat wrapper that allows to map item into Object[] (or could be any
+ * generic type)
+ * <p>
  * Could be used with RowMapper in SQL
  *
  * @param <K>

@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public class ParquetFileFormat<T> extends AbstractFileFormat<String, T, T>
-        implements FileFormat<String, T, T>  {
+        implements FileFormat<String, T, T> {
 
     public ParquetFileFormat() {
         withOption(INPUT_FORMAT_CLASS, AvroParquetInputFormat.class.getCanonicalName());

@@ -6,8 +6,6 @@ import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.Job;
 
 import java.io.InputStream;
 import java.util.Spliterator;

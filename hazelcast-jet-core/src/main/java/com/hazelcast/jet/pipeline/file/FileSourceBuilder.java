@@ -15,16 +15,21 @@ import static java.util.Objects.requireNonNull;
 /**
  * Builder for file sources
  * <p>
- * The builder works with local filesystem and with hadoop supported filesystems.
+ * The builder works with local filesystem and with hadoop supported
+ * filesystems.
  * <p>
- * The builder requires 'path' and 'format' parameters and creates a {@link BatchSource}. The path specifies the
- * location of the file(s) and possibly the data source - s3a://, hdfs://, etc..
- *
- * The format determines how the contents of the file is parsed and also determines the type of the source items.
- * E.g. the {@link LineTextFileFormat} returns each line as a String, {@link JsonFileFormat} returns
- * each line of a JSON Lines file deserialized into an instance of a specified class.
+ * The builder requires 'path' and 'format' parameters and creates a
+ * {@link BatchSource}. The path specifies the location of the file(s)
+ * and possibly the data source - s3a://, hdfs://, etc..
  * <p>
- * You may also use Hadoop to read local files by specifying the {@link #useHadoopForLocalFiles()} flag. This might
+ * The format determines how the contents of the file is parsed and
+ * also determines the type of the source items. E.g. the
+ * {@link LineTextFileFormat} returns each line as a String,
+ * {@link JsonFileFormat} returns each line of a JSON Lines file
+ * deserialized into an instance of a specified class.
+ * <p>
+ * You may also use Hadoop to read local files by specifying the
+ * {@link #useHadoopForLocalFiles()} flag.
  * <p>
  * Usage:
  * <pre>{@code
@@ -51,8 +56,9 @@ public class FileSourceBuilder<T> {
 
     /**
      * Create a new builder with given path.
-     *
-     * Path can point to a file, a directory or contain a glob (e.g. 'file*' capturing file1, file2, ...).
+     * <p>
+     * Path can point to a file, a directory or contain a glob
+     * (e.g. 'file*' capturing file1, file2, ...).
      *
      * @param path path
      */
@@ -62,7 +68,7 @@ public class FileSourceBuilder<T> {
 
     /**
      * Create a new builder with given file format.
-     *
+     * <p>
      * TODO likely to remove (see discussion above)
      */
     public FileSourceBuilder(FileFormat<?, ?, T> format) {
@@ -79,7 +85,7 @@ public class FileSourceBuilder<T> {
 
     /**
      * Set the file format for the source
-     *
+     * <p>
      * Currently supported file formats are:
      * <li> {@link AvroFileFormat}
      * <li> {@link CsvFileFormat}
@@ -88,8 +94,9 @@ public class FileSourceBuilder<T> {
      * <li> {@link ParquetFileFormat}
      * <li> {@link RawBytesFileFormat}
      * <li> {@link TextFileFormat}
-     *
-     * You may provide a custom format by implementing the {@link FileFormat} interface. See its javadoc for details.
+     * <p>
+     * You may provide a custom format by implementing the
+     * {@link FileFormat} interface. See its javadoc for details.
      */
     public <U> FileSourceBuilder<U> withFormat(FileFormat<?, ?, U> fileFormat) {
         format = (FileFormat<?, ?, T>) fileFormat;
@@ -99,7 +106,9 @@ public class FileSourceBuilder<T> {
     /**
      * Use hadoop for files from local filesystem
      * <p>
-     * Using Hadoop may be advantageous when working with small number of large files, because of better parallelization.
+     * Using Hadoop may be advantageous when working with small number
+     * of large files (smaller than total parallelism), because of
+     * better parallelization.
      */
     public FileSourceBuilder<T> useHadoopForLocalFiles() {
         useHadoop = true;
@@ -108,7 +117,7 @@ public class FileSourceBuilder<T> {
 
     /**
      * Specify an option for the underlying source
-     *
+     * <p>
      * NOTE: Format related options are set on the FileFormat directly.
      */
     public FileSourceBuilder<T> withOption(String key, String value) {
@@ -174,8 +183,8 @@ public class FileSourceBuilder<T> {
             }
 
             return Sources.filesBuilder(directory)
-                          .glob(glob)
-                          .build(format.localMapFn());
+                    .glob(glob)
+                    .build(format.localMapFn());
         }
     }
 }

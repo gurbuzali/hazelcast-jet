@@ -35,8 +35,8 @@ public class JsonFileFormat<T> extends AbstractFileFormat<LongWritable, T, T>
             BufferedReader reader = new BufferedReader(new InputStreamReader(is, thisCharset));
 
             return reader.lines()
-                         .map(line -> uncheckCall(() -> JsonUtil.beanFrom(line, thisClazz)))
-                         .onClose(() -> uncheckRun(reader::close));
+                    .map(line -> uncheckCall(() -> JsonUtil.beanFrom(line, thisClazz)))
+                    .onClose(() -> uncheckRun(reader::close));
         };
     }
 

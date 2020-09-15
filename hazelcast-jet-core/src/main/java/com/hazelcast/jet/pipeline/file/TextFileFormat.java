@@ -3,8 +3,6 @@ package com.hazelcast.jet.pipeline.file;
 import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.impl.util.IOUtil;
-import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.Job;
 
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -13,7 +11,7 @@ import java.util.stream.Stream;
 public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
         implements FileFormat<Object, Object, String> {
 
-    private String charset;
+    private final String charset;
 
     public TextFileFormat() {
         this("UTF-8");
@@ -27,10 +25,7 @@ public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
     @Override
     public FunctionEx<InputStream, Stream<String>> mapInputStreamFn() {
         String thisCharset = charset;
-        return is -> {
-            byte[] bytes = IOUtil.readFully(is);
-            return Stream.of(new String(bytes, Charset.forName(thisCharset)));
-        };
+        return is -> Stream.of(new String(IOUtil.readFully(is), Charset.forName(thisCharset)));
     }
 
     @Override

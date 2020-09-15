@@ -4,14 +4,13 @@ import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
+import org.apache.avro.io.DatumReader;
 import org.apache.avro.mapred.AvroKey;
-import org.apache.avro.mapreduce.AvroJob;
 import org.apache.avro.mapreduce.AvroKeyInputFormat;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.mapreduce.Job;
 
 import java.nio.file.Path;
 import java.util.stream.Stream;
@@ -32,22 +31,12 @@ public class AvroFileFormat<T> extends AbstractFileFormat<AvroKey<T>, NullWritab
 
     @Override
     public FunctionEx<Path, Stream<T>> localMapFn() {
-        Class<T> thisReflectClass = this.reflectClass;
-        if (reflectClass != null) {
-            return (path) -> {
-                ReflectDatumReader<T> reflectDatumReader = new ReflectDatumReader<T>(thisReflectClass);
-                DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
-                return StreamSupport.stream(reader.spliterator(), false)
-                                    .onClose(() -> uncheckRun(reader::close));
-            };
-        } else {
-            return (path) -> {
-                SpecificDatumReader<T> reflectDatumReader = new SpecificDatumReader<>();
-                DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
-                return StreamSupport.stream(reader.spliterator(), false)
-                                    .onClose(() -> uncheckRun(reader::close));
-            };
-        }
+        DatumReader<T> datumReader = datumReader();
+        return (path) -> {
+            DataFileReader<T> reader = new DataFileReader<>(path.toFile(), datumReader);
+            return StreamSupport.stream(reader.spliterator(), false)
+                    .onClose(() -> uncheckRun(reader::close));
+        };
     }
 
     @Override
@@ -60,5 +49,9 @@ public class AvroFileFormat<T> extends AbstractFileFormat<AvroKey<T>, NullWritab
         Schema schema = ReflectData.get().getSchema(reflectClass);
         withOption(CONF_INPUT_KEY_SCHEMA, schema.toString());
         return this;
+    }
+
+    private DatumReader<T> datumReader() {
+        return reflectClass == null ? new SpecificDatumReader<>() : new ReflectDatumReader<>(reflectClass);
     }
 }
