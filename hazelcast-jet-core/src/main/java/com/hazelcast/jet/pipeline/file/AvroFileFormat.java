@@ -19,15 +19,21 @@ import java.util.stream.StreamSupport;
 
 import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 
-public class AvroFileFormat<T> implements FileFormat<AvroKey<T>, NullWritable, T> {
+public class AvroFileFormat<T> extends AbstractFileFormat<AvroKey<T>, NullWritable, T>
+        implements FileFormat<AvroKey<T>, NullWritable, T> {
 
-    private boolean reflect;
+    private static final String CONF_INPUT_KEY_SCHEMA = "avro.schema.input.key";
+
     private Class<T> reflectClass;
 
+    public AvroFileFormat() {
+        withOption(INPUT_FORMAT_CLASS, AvroKeyInputFormat.class.getCanonicalName());
+    }
+
     @Override
-    public FunctionEx<Path, Stream<T>> mapFn() {
+    public FunctionEx<Path, Stream<T>> localMapFn() {
         Class<T> thisReflectClass = this.reflectClass;
-        if (reflect) {
+        if (reflectClass != null) {
             return (path) -> {
                 ReflectDatumReader<T> reflectDatumReader = new ReflectDatumReader<T>(thisReflectClass);
                 DataFileReader<T> reader = new DataFileReader<>(path.toFile(), reflectDatumReader);
@@ -45,25 +51,14 @@ public class AvroFileFormat<T> implements FileFormat<AvroKey<T>, NullWritable, T
     }
 
     @Override
-    public void apply(Object object) {
-        if (object instanceof Job) {
-            Job job = (Job) object;
-            job.setInputFormatClass(AvroKeyInputFormat.class);
-            if (reflect) {
-                Schema schema = ReflectData.get().getSchema(reflectClass);
-                AvroJob.setInputKeySchema(job, schema);
-            }
-        }
-    }
-
-    @Override
     public BiFunctionEx<AvroKey<T>, NullWritable, T> projectionFn() {
         return (k, v) -> k.datum();
     }
 
     public AvroFileFormat<T> withReflect(Class<T> reflectClass) {
         this.reflectClass = reflectClass;
-        reflect = true;
+        Schema schema = ReflectData.get().getSchema(reflectClass);
+        withOption(CONF_INPUT_KEY_SCHEMA, schema.toString());
         return this;
     }
 }

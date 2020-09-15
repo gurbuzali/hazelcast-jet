@@ -21,9 +21,9 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class CsvRecordReader extends RecordReader<NullWritable, Object> {
+import static com.hazelcast.jet.pipeline.file.CsvFileFormat.CSV_INPUT_FORMAT_BEAN_CLASS;
 
-    public static final String CSV_INPUT_FORMAT_BEAN_CLASS = "csv.bean.class";
+public class CsvRecordReader extends RecordReader<NullWritable, Object> {
 
     private FileSplit fileSplit;
     private Configuration conf;

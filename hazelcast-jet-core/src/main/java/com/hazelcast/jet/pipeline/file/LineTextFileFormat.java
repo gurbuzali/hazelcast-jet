@@ -15,15 +15,15 @@ import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 public class LineTextFileFormat extends AbstractFileFormat<Object, Object, String> implements FileFormat<Object,
         Object, String> {
 
-
-    private String charset;
+    private final String charset;
 
     public LineTextFileFormat() {
-        charset = "UTF-8";
+        this("UTF-8");
     }
 
     public LineTextFileFormat(String charset) {
         this.charset = charset;
+        withOption(INPUT_FORMAT_CLASS, TextInputFormat.class.getCanonicalName());
     }
 
     @Override
@@ -34,14 +34,6 @@ public class LineTextFileFormat extends AbstractFileFormat<Object, Object, Strin
             return reader.lines()
                          .onClose(() -> uncheckRun(reader::close));
         };
-    }
-
-    @Override
-    public void apply(Object object) {
-        if (object instanceof Job) {
-            Job job = (Job) object;
-            job.setInputFormatClass(TextInputFormat.class);
-        }
     }
 
     @Override

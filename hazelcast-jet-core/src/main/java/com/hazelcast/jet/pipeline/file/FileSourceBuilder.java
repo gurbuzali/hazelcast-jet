@@ -175,7 +175,7 @@ public class FileSourceBuilder<T> {
 
             return Sources.filesBuilder(directory)
                           .glob(glob)
-                          .build(format.mapFn());
+                          .build(format.localMapFn());
         }
     }
 }

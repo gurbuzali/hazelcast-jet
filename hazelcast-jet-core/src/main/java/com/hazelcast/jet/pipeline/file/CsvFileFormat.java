@@ -17,47 +17,27 @@ import java.util.stream.StreamSupport;
 
 public class CsvFileFormat<T> extends AbstractFileFormat<NullWritable, T, T> implements FileFormat<NullWritable, T, T> {
 
+    public static final String CSV_INPUT_FORMAT_BEAN_CLASS = "csv.bean.class";
+
     private final Class<T> clazz;
-    private final CsvMapper mapper;
-    private final ObjectReader reader;
 
     public CsvFileFormat(Class<T> clazz) {
         this.clazz = clazz;
-        mapper = new CsvMapper();
 
-        CsvSchema schema = CsvSchema.emptySchema().withHeader();
-        reader = mapper.readerFor(clazz).with(schema);
+        withOption(INPUT_FORMAT_CLASS, "com.hazelcast.jet.hadoop.impl.CsvInputFormat");
+        withOption(CSV_INPUT_FORMAT_BEAN_CLASS, clazz.getCanonicalName());
     }
 
     @Override
     public FunctionEx<InputStream, Stream<T>> mapInputStreamFn() {
-        ObjectReader thisObjectReader = this.reader;
+        CsvSchema schema = CsvSchema.emptySchema().withHeader();
+        CsvMapper mapper = new CsvMapper();
+        ObjectReader reader = mapper.readerFor(clazz).with(schema);
         return is -> StreamSupport.stream(
                 Spliterators.spliteratorUnknownSize(
-                        thisObjectReader.readValues(is),
+                        reader.readValues(is),
                         Spliterator.ORDERED),
                 false);
-    }
-
-    @Override
-    public void apply(Object object) {
-        if (object instanceof Job) {
-            Job job = (Job) object;
-
-            try {
-
-                @SuppressWarnings("unchecked")
-                Class<? extends InputFormat<?, ?>> format = (Class<? extends InputFormat<?, ?>>)
-                        Thread.currentThread()
-                              .getContextClassLoader()
-                              .loadClass("com.hazelcast.jet.hadoop.impl.CsvInputFormat");
-                job.setInputFormatClass(format);
-                job.getConfiguration().set("csv.bean.class", clazz.getCanonicalName());
-
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     @Override

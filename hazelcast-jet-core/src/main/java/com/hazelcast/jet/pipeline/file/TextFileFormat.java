@@ -16,11 +16,12 @@ public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
     private String charset;
 
     public TextFileFormat() {
-        charset = "UTF-8";
+        this("UTF-8");
     }
 
     public TextFileFormat(String charset) {
         this.charset = charset;
+        withOption(INPUT_FORMAT_CLASS, "com.hazelcast.jet.hadoop.impl.WholeTextInputFormat");
     }
 
     @Override
@@ -30,25 +31,6 @@ public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
             byte[] bytes = IOUtil.readFully(is);
             return Stream.of(new String(bytes, Charset.forName(thisCharset)));
         };
-    }
-
-    @Override
-    public void apply(Object object) {
-        if (object instanceof Job) {
-            Job job = (Job) object;
-
-            try {
-                @SuppressWarnings("unchecked")
-                Class<? extends InputFormat<?, ?>> format = (Class<? extends InputFormat<?, ?>>)
-                        Thread.currentThread()
-                              .getContextClassLoader()
-                              .loadClass("com.hazelcast.jet.hadoop.impl.WholeTextInputFormat");
-                job.setInputFormatClass(format);
-
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     @Override

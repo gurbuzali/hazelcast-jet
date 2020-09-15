@@ -4,8 +4,6 @@ import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.json.JsonUtil;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.Job;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -18,11 +16,15 @@ import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 public class JsonFileFormat<T> extends AbstractFileFormat<LongWritable, T, T>
         implements FileFormat<LongWritable, T, T> {
 
+    public static final String JSON_INPUT_FORMAT_BEAN_CLASS = "json.bean.class";
+
     private final Class<T> clazz;
     private String charset = "UTF-8";
 
     public JsonFileFormat(Class<T> clazz) {
         this.clazz = clazz;
+        withOption(INPUT_FORMAT_CLASS, "com.hazelcast.jet.hadoop.impl.JsonInputFormat");
+        withOption(JSON_INPUT_FORMAT_BEAN_CLASS, clazz.getCanonicalName());
     }
 
     @Override
@@ -39,28 +41,12 @@ public class JsonFileFormat<T> extends AbstractFileFormat<LongWritable, T, T>
     }
 
     @Override
-    public void apply(Object object) {
-        if (object instanceof Job) {
-            Job job = (Job) object;
-
-            try {
-
-                @SuppressWarnings("unchecked")
-                Class<? extends InputFormat<?, ?>> format = (Class<? extends InputFormat<?, ?>>)
-                        Thread.currentThread()
-                              .getContextClassLoader()
-                              .loadClass("com.hazelcast.jet.hadoop.impl.JsonInputFormat");
-                job.setInputFormatClass(format);
-                job.getConfiguration().set("json.bean.class", clazz.getCanonicalName());
-
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    @Override
     public BiFunctionEx<LongWritable, T, T> projectionFn() {
         return (k, v) -> v;
+    }
+
+    public JsonFileFormat<T> withCharset(String charset) {
+        this.charset = charset;
+        return this;
     }
 }

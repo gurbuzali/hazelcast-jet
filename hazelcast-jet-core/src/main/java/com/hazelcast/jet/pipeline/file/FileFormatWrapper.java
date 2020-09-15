@@ -20,6 +20,7 @@ import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.stream.Stream;
 
 /**
@@ -42,13 +43,13 @@ public class FileFormatWrapper<K, V, T> implements FileFormat<K, V, Object[]> {
     }
 
     @Override
-    public FunctionEx<Path, Stream<Object[]>> mapFn() {
-        return format.mapFn().andThen(stream -> stream.map(toObjectFn));
+    public FunctionEx<Path, Stream<Object[]>> localMapFn() {
+        return format.localMapFn().andThen(stream -> stream.map(toObjectFn));
     }
 
     @Override
-    public void apply(Object object) {
-
+    public Map<String, String> options() {
+        return format.options();
     }
 
     @Override

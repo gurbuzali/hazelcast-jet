@@ -16,9 +16,9 @@ import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
 
 import java.io.IOException;
 
-public class JsonInputFormat extends FileInputFormat<LongWritable, Object> {
+import static com.hazelcast.jet.pipeline.file.JsonFileFormat.JSON_INPUT_FORMAT_BEAN_CLASS;
 
-    public static final String JSON_INPUT_FORMAT_BEAN_CLASS = "json.bean.class";
+public class JsonInputFormat extends FileInputFormat<LongWritable, Object> {
 
     @Override
     public RecordReader<LongWritable, Object> createRecordReader(InputSplit split, TaskAttemptContext context)
