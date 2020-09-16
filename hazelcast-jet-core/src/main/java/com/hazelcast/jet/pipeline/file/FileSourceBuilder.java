@@ -61,7 +61,7 @@ public class FileSourceBuilder<T> {
     private final Map<String, String> options = new HashMap<>();
 
     private String path;
-    private FileFormat<?, ?, T> format;
+    private FileFormat<T> format;
     private boolean useHadoop;
 
     // TODO We should have only single constructor and withFormat(..)
@@ -87,7 +87,7 @@ public class FileSourceBuilder<T> {
      * <p>
      * TODO likely to remove (see discussion above)
      */
-    public FileSourceBuilder(FileFormat<?, ?, T> format) {
+    public FileSourceBuilder(FileFormat<T> format) {
         this.format = requireNonNull(format, "format must not be null");
     }
 
@@ -114,8 +114,8 @@ public class FileSourceBuilder<T> {
      * You may provide a custom format by implementing the
      * {@link FileFormat} interface. See its javadoc for details.
      */
-    public <U> FileSourceBuilder<U> withFormat(FileFormat<?, ?, U> fileFormat) {
-        format = (FileFormat<?, ?, T>) fileFormat;
+    public <U> FileSourceBuilder<U> withFormat(FileFormat<U> fileFormat) {
+        format = (FileFormat<T>) fileFormat;
         return (FileSourceBuilder<U>) this;
     }
 
@@ -160,7 +160,7 @@ public class FileSourceBuilder<T> {
     /**
      * The source format
      */
-    public FileFormat<?, ?, T> format() {
+    public FileFormat<T> format() {
         return format;
     }
 

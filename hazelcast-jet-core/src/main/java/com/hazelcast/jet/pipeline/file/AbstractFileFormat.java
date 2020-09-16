@@ -16,6 +16,7 @@
 
 package com.hazelcast.jet.pipeline.file;
 
+import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 
 import java.io.FileInputStream;
@@ -30,18 +31,26 @@ import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 /**
  * Base class for implementations of {@link FileFormat}
  *
- * @param <K> type of InputFormat's key
- * @param <V> type of InputFormat's value
  * @param <T> type of item emitted from the source
  */
-public abstract class AbstractFileFormat<K, V, T> implements FileFormat<K, V, T> {
+public abstract class AbstractFileFormat<T> implements FileFormat<T> {
 
     /**
      * InputFormat class option
      *
-     * Subclasses must set the this option to the fully qualified name of the InputFormat class
+     * Subclasses must set the this option to the fully qualified name of the
+     * InputFormat class
      */
     public static final String INPUT_FORMAT_CLASS = "job.inputformat.class";
+
+    /**
+     * Projection class option
+     *
+     * Subclasses must set the this option to the fully qualified name of the
+     * projection class which should be a {@link BiFunctionEx}, otherwise a
+     * default projectionFn will be used which returns the value.
+     */
+    public static final String PROJECTION_CLASS = "job.projection.class";
 
     private final Map<String, String> options = new HashMap<>();
 
@@ -67,7 +76,7 @@ public abstract class AbstractFileFormat<K, V, T> implements FileFormat<K, V, T>
         return options;
     }
 
-    protected AbstractFileFormat<K, V, T> withOption(String key, String value) {
+    protected AbstractFileFormat<T> withOption(String key, String value) {
         options.put(key, value);
         return this;
     }

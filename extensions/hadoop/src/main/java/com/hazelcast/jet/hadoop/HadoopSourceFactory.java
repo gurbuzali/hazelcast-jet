@@ -16,7 +16,10 @@
 
 package com.hazelcast.jet.hadoop;
 
+import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.jet.JetException;
+import com.hazelcast.jet.impl.util.ExceptionUtil;
+import com.hazelcast.jet.impl.util.ReflectionUtils;
 import com.hazelcast.jet.pipeline.BatchSource;
 import com.hazelcast.jet.pipeline.file.FileSourceBuilder;
 import com.hazelcast.jet.pipeline.file.FileSourceFactory;
@@ -31,6 +34,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import static com.hazelcast.jet.pipeline.file.AbstractFileFormat.INPUT_FORMAT_CLASS;
+import static com.hazelcast.jet.pipeline.file.AbstractFileFormat.PROJECTION_CLASS;
 
 /**
  * Hadoop based implementation for FileSourceFactory
@@ -38,6 +42,8 @@ import static com.hazelcast.jet.pipeline.file.AbstractFileFormat.INPUT_FORMAT_CL
  * @param <T> type of the items emitted from the source
  */
 public class HadoopSourceFactory<T> implements FileSourceFactory<T> {
+
+    BiFunctionEx<?, T, T> DEFAULT_PROJECTION_FN = (k, v) -> v;
 
     @Override
     public BatchSource<T> create(FileSourceBuilder<T> builder) {
@@ -54,10 +60,17 @@ public class HadoopSourceFactory<T> implements FileSourceFactory<T> {
 
             Class<? extends InputFormat<?, ?>> inputFormatClass = loadInputFormatClass(inputFormatClassName);
             job.setInputFormatClass(inputFormatClass);
-
             FileInputFormat.addInputPath(job, new Path(builder.path()));
 
-            return HadoopSources.inputFormat(configuration, builder.format().projectionFn());
+            String projectionClassName = formatOptions.get(PROJECTION_CLASS);
+            BiFunctionEx<?, ?, T> projectionFn;
+            if (projectionClassName == null) {
+                projectionFn = DEFAULT_PROJECTION_FN;
+            } else {
+                projectionFn = projectionFn(projectionClassName);
+            }
+
+            return HadoopSources.inputFormat(configuration, projectionFn);
         } catch (IOException e) {
             throw new JetException("Could not create a source", e);
         }
@@ -70,18 +83,19 @@ public class HadoopSourceFactory<T> implements FileSourceFactory<T> {
     }
 
     private Class<? extends InputFormat<?, ?>> loadInputFormatClass(String inputFormatClassName) {
-
         try {
             @SuppressWarnings("unchecked")
             Class<? extends InputFormat<?, ?>> format = (Class<? extends InputFormat<?, ?>>)
                     Thread.currentThread()
-                          .getContextClassLoader()
-                          .loadClass(inputFormatClassName);
-
+                            .getContextClassLoader()
+                            .loadClass(inputFormatClassName);
             return format;
-
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            throw ExceptionUtil.rethrow(e);
         }
+    }
+
+    private BiFunctionEx<?, ?, T> projectionFn(String projectionClassName) {
+        return ReflectionUtils.newInstance(Thread.currentThread().getContextClassLoader(), projectionClassName);
     }
 }

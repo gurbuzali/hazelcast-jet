@@ -21,7 +21,7 @@ package com.hazelcast.jet.pipeline.file;
  *
  * TODO not sure if we actually need this? Does it provide value?
  */
-public class FileSources {
+public final class FileSources {
 
     public static FileSourceBuilder<byte[]> files(String path) {
         return new FileSourceBuilder<>(path)
@@ -36,7 +36,7 @@ public class FileSources {
         return new FileSourceBuilder<>(path);
     }
 
-    public static <T> FileSourceBuilder<T> format(FileFormat<Object, Object, T> format) {
+    public static <T> FileSourceBuilder<T> format(FileFormat<T> format) {
         return new FileSourceBuilder<>(format);
     }
 

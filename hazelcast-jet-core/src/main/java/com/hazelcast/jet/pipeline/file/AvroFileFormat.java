@@ -16,17 +16,13 @@
 
 package com.hazelcast.jet.pipeline.file;
 
-import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.io.DatumReader;
-import org.apache.avro.mapred.AvroKey;
-import org.apache.avro.mapreduce.AvroKeyInputFormat;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.hadoop.io.NullWritable;
 
 import java.nio.file.Path;
 import java.util.stream.Stream;
@@ -37,11 +33,9 @@ import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 /**
  * FileFormat for avro files
  *
- *
  * @param <T>
  */
-public class AvroFileFormat<T> extends AbstractFileFormat<AvroKey<T>, NullWritable, T>
-        implements FileFormat<AvroKey<T>, NullWritable, T> {
+public class AvroFileFormat<T> extends AbstractFileFormat<T> {
 
     // Taken from org.apache.avro.mapreduce.AvroJob.CONF_INPUT_KEY_SCHEMA, which is private
     private static final String CONF_INPUT_KEY_SCHEMA = "avro.schema.input.key";
@@ -49,22 +43,19 @@ public class AvroFileFormat<T> extends AbstractFileFormat<AvroKey<T>, NullWritab
     private Class<T> reflectClass;
 
     public AvroFileFormat() {
-        withOption(INPUT_FORMAT_CLASS, AvroKeyInputFormat.class.getCanonicalName());
+        withOption(INPUT_FORMAT_CLASS, "org.apache.avro.mapreduce.AvroKeyInputFormat");
+        withOption(PROJECTION_CLASS, "com.hazelcast.jet.hadoop.impl.AvroKeyProjection");
     }
 
     @Override
     public FunctionEx<Path, Stream<T>> localMapFn() {
-        DatumReader<T> datumReader = datumReader();
+        Class<T> thisReflectClass = reflectClass;
         return (path) -> {
+            DatumReader<T> datumReader = datumReader(thisReflectClass);
             DataFileReader<T> reader = new DataFileReader<>(path.toFile(), datumReader);
             return StreamSupport.stream(reader.spliterator(), false)
                     .onClose(() -> uncheckRun(reader::close));
         };
-    }
-
-    @Override
-    public BiFunctionEx<AvroKey<T>, NullWritable, T> projectionFn() {
-        return (k, v) -> k.datum();
     }
 
     public AvroFileFormat<T> withReflect(Class<T> reflectClass) {
@@ -74,7 +65,7 @@ public class AvroFileFormat<T> extends AbstractFileFormat<AvroKey<T>, NullWritab
         return this;
     }
 
-    private DatumReader<T> datumReader() {
+    private static <T> DatumReader<T> datumReader(Class<T> reflectClass) {
         return reflectClass == null ? new SpecificDatumReader<>() : new ReflectDatumReader<>(reflectClass);
     }
 }

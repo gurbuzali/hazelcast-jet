@@ -16,7 +16,6 @@
 
 package com.hazelcast.jet.pipeline.file;
 
-import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
 
 import java.nio.file.Path;
@@ -29,16 +28,14 @@ import java.util.stream.Stream;
  * <p>
  * Could be used with RowMapper in SQL
  *
- * @param <K>
- * @param <V>
  * @param <T>
  */
-public class FileFormatWrapper<K, V, T> implements FileFormat<K, V, Object[]> {
+public class FileFormatWrapper<T> implements FileFormat<Object[]> {
 
-    private final FileFormat<K, V, T> format;
+    private final FileFormat<T> format;
     private final FunctionEx<T, Object[]> toObjectFn;
 
-    public FileFormatWrapper(FileFormat<K, V, T> format, FunctionEx<T, Object[]> toObjectFn) {
+    public FileFormatWrapper(FileFormat<T> format, FunctionEx<T, Object[]> toObjectFn) {
         this.format = format;
         this.toObjectFn = toObjectFn;
     }
@@ -51,10 +48,5 @@ public class FileFormatWrapper<K, V, T> implements FileFormat<K, V, Object[]> {
     @Override
     public Map<String, String> options() {
         return format.options();
-    }
-
-    @Override
-    public BiFunctionEx<K, V, Object[]> projectionFn() {
-        return format.projectionFn().andThen(toObjectFn);
     }
 }

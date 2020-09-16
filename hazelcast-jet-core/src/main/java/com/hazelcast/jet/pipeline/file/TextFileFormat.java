@@ -24,8 +24,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.stream.Stream;
 
-public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
-        implements FileFormat<Object, Object, String> {
+public class TextFileFormat extends AbstractFileFormat<String> {
 
     private final String charset;
 
@@ -36,16 +35,12 @@ public class TextFileFormat extends AbstractFileFormat<Object, Object, String>
     public TextFileFormat(String charset) {
         this.charset = charset;
         withOption(INPUT_FORMAT_CLASS, "com.hazelcast.jet.hadoop.impl.WholeTextInputFormat");
+        withOption(PROJECTION_CLASS, "com.hazelcast.jet.hadoop.impl.ValueToStringProjection");
     }
 
     @Override
     public FunctionEx<InputStream, Stream<String>> mapInputStreamFn() {
         String thisCharset = charset;
         return is -> Stream.of(new String(IOUtil.readFully(is), Charset.forName(thisCharset)));
-    }
-
-    @Override
-    public BiFunctionEx<Object, Object, String> projectionFn() {
-        return (k, v) -> v.toString();
     }
 }

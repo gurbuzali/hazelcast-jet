@@ -29,7 +29,7 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class CsvFileFormat<T> extends AbstractFileFormat<NullWritable, T, T> implements FileFormat<NullWritable, T, T> {
+public class CsvFileFormat<T> extends AbstractFileFormat<T>{
 
     public static final String CSV_INPUT_FORMAT_BEAN_CLASS = "csv.bean.class";
 
@@ -52,10 +52,5 @@ public class CsvFileFormat<T> extends AbstractFileFormat<NullWritable, T, T> imp
                         reader.readValues(is),
                         Spliterator.ORDERED),
                 false);
-    }
-
-    @Override
-    public BiFunctionEx<NullWritable, T, T> projectionFn() {
-        return (k, v) -> v;
     }
 }

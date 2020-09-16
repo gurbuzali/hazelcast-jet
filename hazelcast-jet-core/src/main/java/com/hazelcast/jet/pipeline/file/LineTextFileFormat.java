@@ -16,9 +16,7 @@
 
 package com.hazelcast.jet.pipeline.file;
 
-import com.hazelcast.function.BiFunctionEx;
 import com.hazelcast.function.FunctionEx;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -27,8 +25,7 @@ import java.util.stream.Stream;
 
 import static com.hazelcast.jet.impl.util.Util.uncheckRun;
 
-public class LineTextFileFormat extends AbstractFileFormat<Object, Object, String> implements FileFormat<Object,
-        Object, String> {
+public class LineTextFileFormat extends AbstractFileFormat<String> {
 
     private final String charset;
 
@@ -38,7 +35,8 @@ public class LineTextFileFormat extends AbstractFileFormat<Object, Object, Strin
 
     public LineTextFileFormat(String charset) {
         this.charset = charset;
-        withOption(INPUT_FORMAT_CLASS, TextInputFormat.class.getCanonicalName());
+        withOption(INPUT_FORMAT_CLASS, "org.apache.hadoop.mapreduce.lib.input.TextInputFormat");
+        withOption(PROJECTION_CLASS, "com.hazelcast.jet.hadoop.impl.ValueToStringProjection");
     }
 
     @Override
@@ -49,10 +47,5 @@ public class LineTextFileFormat extends AbstractFileFormat<Object, Object, Strin
             return reader.lines()
                     .onClose(() -> uncheckRun(reader::close));
         };
-    }
-
-    @Override
-    public BiFunctionEx<Object, Object, String> projectionFn() {
-        return (k, v) -> v.toString();
     }
 }
