@@ -154,7 +154,7 @@ class PortableUpsertTarget implements UpsertTarget {
                     writer.writeDouble(name, value == null ? 0D : (double) value);
                     break;
                 case UTF:
-                    writer.writeUTF(name, (String) value);
+                    writer.writeUTF(name, (String) QueryDataType.VARCHAR.convert(value));
                     break;
                 default:
                     if (value == null) {

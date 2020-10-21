@@ -19,6 +19,7 @@ package com.hazelcast.jet.sql.impl.inject;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 import org.apache.avro.Schema;
+import org.apache.avro.Schema.Type;
 import org.apache.avro.generic.GenericRecordBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -36,23 +37,23 @@ class AvroUpsertTarget implements UpsertTarget {
 
     @Override
     public UpsertInjector createInjector(String path, QueryDataType type) {
-        switch (type.getTypeFamily()) {
-            case TINYINT:
-                return value -> record.set(path, value == null ? null : ((Byte) value).intValue());
-            case SMALLINT:
-                return value -> record.set(path, value == null ? null : ((Short) value).intValue());
+        switch (extractType(path)) {
             case BOOLEAN:
-            case INTEGER:
-            case BIGINT:
-            case REAL:
+            case INT:
+                return value -> {
+                    if (value instanceof Byte) {
+                        record.set(path, ((Byte) value).intValue());
+                    } else if (value instanceof Short) {
+                        record.set(path, ((Short) value).intValue());
+                    } else {
+                        record.set(path, value);
+                    }
+                };
+            case LONG:
+            case FLOAT:
             case DOUBLE:
                 return value -> record.set(path, value);
-            case DECIMAL:
-            case TIME:
-            case DATE:
-            case TIMESTAMP:
-            case TIMESTAMP_WITH_TIME_ZONE:
-            case VARCHAR:
+            case STRING:
                 return value -> record.set(path, QueryDataType.VARCHAR.convert(value));
             default:
                 return value -> {
@@ -63,6 +64,15 @@ class AvroUpsertTarget implements UpsertTarget {
                     }
                 };
         }
+    }
+
+    private Type extractType(String path) {
+        Schema schema = this.schema.getField(path).schema();
+        if (schema.getType() == Type.UNION) {
+            assert schema.getTypes().get(0).getType() == Type.NULL : schema.getTypes().get(0).getType();
+            return schema.getTypes().get(1).getType();
+        }
+        return schema.getType();
     }
 
     @Override
