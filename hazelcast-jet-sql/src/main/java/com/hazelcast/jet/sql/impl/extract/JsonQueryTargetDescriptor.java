@@ -42,14 +42,4 @@ public final class JsonQueryTargetDescriptor implements QueryTargetDescriptor {
     @Override
     public void readData(ObjectDataInput in) {
     }
-
-    @Override
-    public int hashCode() {
-        return 0;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof JsonQueryTargetDescriptor;
-    }
 }

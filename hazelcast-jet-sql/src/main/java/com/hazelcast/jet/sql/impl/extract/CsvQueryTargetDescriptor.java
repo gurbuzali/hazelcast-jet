@@ -25,7 +25,6 @@ import com.hazelcast.sql.impl.extract.QueryTargetDescriptor;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Objects;
 
 public final class CsvQueryTargetDescriptor implements QueryTargetDescriptor {
 
@@ -52,22 +51,5 @@ public final class CsvQueryTargetDescriptor implements QueryTargetDescriptor {
     @Override
     public void readData(ObjectDataInput in) throws IOException {
         indicesByNames = in.readObject();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        CsvQueryTargetDescriptor that = (CsvQueryTargetDescriptor) o;
-        return Objects.equals(indicesByNames, that.indicesByNames);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(indicesByNames);
     }
 }

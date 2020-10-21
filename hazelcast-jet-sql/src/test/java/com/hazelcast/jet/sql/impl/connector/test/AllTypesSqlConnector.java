@@ -41,12 +41,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZonedDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
 import static com.hazelcast.jet.impl.util.Util.toList;
-import static java.time.ZoneId.systemDefault;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -91,14 +90,12 @@ public class AllTypesSqlConnector implements SqlConnector {
             LocalTime.of(12, 23, 34),
             LocalDate.of(2020, 4, 15),
             LocalDateTime.of(2020, 4, 15, 12, 23, 34, 1_000_000),
-            ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(systemDefault()).toOffsetDateTime(),
+            OffsetDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC),
             null
     };
 
     public static void create(SqlService sqlService, String tableName) {
-        sqlService.execute("CREATE MAPPING " + tableName + ' '
-                + "TYPE " + AllTypesSqlConnector.TYPE_NAME
-        );
+        sqlService.execute("CREATE MAPPING " + tableName + ' ' + "TYPE " + AllTypesSqlConnector.TYPE_NAME);
     }
 
     @Override

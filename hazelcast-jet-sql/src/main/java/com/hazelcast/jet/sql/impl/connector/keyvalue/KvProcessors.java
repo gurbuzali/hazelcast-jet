@@ -36,11 +36,9 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Objects;
 
 public final class KvProcessors {
 
@@ -168,31 +166,6 @@ public final class KvProcessors {
             predicate = in.readObject();
             projection = in.readObject();
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            RowProjectorProcessorSupplier that = (RowProjectorProcessorSupplier) o;
-            return Arrays.equals(paths, that.paths) &&
-                    Arrays.equals(types, that.types) &&
-                    Objects.equals(keyDescriptor, that.keyDescriptor) &&
-                    Objects.equals(valueDescriptor, that.valueDescriptor) &&
-                    Objects.equals(predicate, that.predicate) &&
-                    Objects.equals(projection, that.projection);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = Objects.hash(keyDescriptor, valueDescriptor, predicate, projection);
-            result = 31 * result + Arrays.hashCode(paths);
-            result = 31 * result + Arrays.hashCode(types);
-            return result;
-        }
     }
 
     @SuppressFBWarnings(
@@ -284,31 +257,6 @@ public final class KvProcessors {
             hiddenFields = in.readObject();
             keyDescriptor = in.readObject();
             valueDescriptor = in.readObject();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            EntryProjectorProcessorSupplier that = (EntryProjectorProcessorSupplier) o;
-            return Arrays.equals(paths, that.paths) &&
-                    Arrays.equals(types, that.types) &&
-                    Arrays.equals(hiddenFields, that.hiddenFields) &&
-                    Objects.equals(keyDescriptor, that.keyDescriptor) &&
-                    Objects.equals(valueDescriptor, that.valueDescriptor);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = Objects.hash(keyDescriptor, valueDescriptor);
-            result = 31 * result + Arrays.hashCode(paths);
-            result = 31 * result + Arrays.hashCode(types);
-            result = 31 * result + Arrays.hashCode(hiddenFields);
-            return result;
         }
     }
 }

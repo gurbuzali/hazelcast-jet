@@ -242,7 +242,7 @@ public class MetadataPortableResolverTest {
         );
         assertThat(metadata.getQueryTargetDescriptor()).isEqualTo(GenericQueryTargetDescriptor.DEFAULT);
         assertThat(metadata.getUpsertTargetDescriptor())
-                .isEqualTo(new PortableUpsertTargetDescriptor(
+                .isEqualToComparingFieldByField(new PortableUpsertTargetDescriptor(
                         classDefinition.getFactoryId(),
                         classDefinition.getClassId(),
                         classDefinition.getVersion())

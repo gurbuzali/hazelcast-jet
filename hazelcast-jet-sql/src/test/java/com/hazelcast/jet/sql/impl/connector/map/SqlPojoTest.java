@@ -39,7 +39,6 @@ import java.util.GregorianCalendar;
 import java.util.Map;
 
 import static com.hazelcast.jet.core.TestUtil.createMap;
-import static com.hazelcast.jet.sql.TimeUtil.localOffset;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.JAVA_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_FORMAT;
@@ -212,7 +211,6 @@ public class SqlPojoTest extends SqlTestSupport {
     }
 
     @Test
-    @SuppressWarnings("checkstyle:LineLength")
     public void test_allTypes() {
         String from = randomName();
         AllTypesSqlConnector.create(sqlService, from);
@@ -283,10 +281,10 @@ public class SqlPojoTest extends SqlTestSupport {
                         LocalDate.of(2020, 4, 15),
                         LocalDateTime.of(2020, 4, 15, 12, 23, 34, 1_000_000),
                         Date.from(ofEpochMilli(1586953414200L)),
-                        GregorianCalendar.from(ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(localOffset())),
+                        GregorianCalendar.from(ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC)),
                         ofEpochMilli(1586953414200L),
-                        ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(localOffset()),
-                        ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(systemDefault()).toOffsetDateTime(),
+                        ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC),
+                        OffsetDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC),
                         null
                 )));
 
@@ -331,10 +329,10 @@ public class SqlPojoTest extends SqlTestSupport {
                         LocalDate.of(2020, 4, 15),
                         LocalDateTime.of(2020, 4, 15, 12, 23, 34, 1_000_000),
                         OffsetDateTime.ofInstant(Date.from(ofEpochMilli(1586953414200L)).toInstant(), systemDefault()),
-                        ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(localOffset()).toOffsetDateTime(),
+                        OffsetDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC),
                         OffsetDateTime.ofInstant(ofEpochMilli(1586953414200L), systemDefault()),
-                        ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(localOffset()).toOffsetDateTime(),
-                        ZonedDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC).withZoneSameInstant(systemDefault()).toOffsetDateTime(),
+                        OffsetDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC),
+                        OffsetDateTime.of(2020, 4, 15, 12, 23, 34, 200_000_000, UTC),
                         null
                 )));
     }

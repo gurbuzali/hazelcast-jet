@@ -281,7 +281,7 @@ public class KvMetadataJavaResolverTest {
         );
         assertThat(metadata.getQueryTargetDescriptor()).isEqualTo(GenericQueryTargetDescriptor.DEFAULT);
         assertThat(metadata.getUpsertTargetDescriptor())
-                .isEqualTo(new PojoUpsertTargetDescriptor(
+                .isEqualToComparingFieldByField(new PojoUpsertTargetDescriptor(
                         Type.class.getName(),
                         ImmutableMap.of("field", int.class.getName())
                 ));

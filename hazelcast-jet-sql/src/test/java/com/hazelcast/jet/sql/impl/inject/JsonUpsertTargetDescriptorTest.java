@@ -47,6 +47,6 @@ public class JsonUpsertTargetDescriptorTest {
                 SERIALIZATION_SERVICE.toObject(SERIALIZATION_SERVICE.toData(original));
 
         // then
-        assertThat(serialized).isEqualTo(original);
+        assertThat(serialized).isEqualToComparingFieldByField(original);
     }
 }

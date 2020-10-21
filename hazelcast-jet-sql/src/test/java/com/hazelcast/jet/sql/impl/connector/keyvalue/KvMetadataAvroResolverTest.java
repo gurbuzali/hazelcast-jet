@@ -140,7 +140,7 @@ public class KvMetadataAvroResolverTest {
         );
         assertThat(metadata.getQueryTargetDescriptor()).isEqualTo(AvroQueryTargetDescriptor.INSTANCE);
         assertThat(metadata.getUpsertTargetDescriptor())
-                .isEqualTo(new AvroUpsertTargetDescriptor(
+                .isEqualToComparingFieldByField(new AvroUpsertTargetDescriptor(
                                 "{"
                                         + "\"type\":\"record\""
                                         + ",\"name\":\"sql\""

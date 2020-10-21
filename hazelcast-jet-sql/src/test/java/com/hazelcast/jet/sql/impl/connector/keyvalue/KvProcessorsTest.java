@@ -19,7 +19,6 @@ package com.hazelcast.jet.sql.impl.connector.keyvalue;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.jet.core.ProcessorSupplier;
-import com.hazelcast.jet.sql.impl.inject.HazelcastJsonUpsertTargetDescriptor;
 import com.hazelcast.jet.sql.impl.inject.PrimitiveUpsertTargetDescriptor;
 import com.hazelcast.sql.impl.expression.ConstantExpression;
 import com.hazelcast.sql.impl.expression.Expression;
@@ -50,7 +49,7 @@ public class KvProcessorsTest {
 
         ProcessorSupplier serialized = SERIALIZATION_SERVICE.toObject(SERIALIZATION_SERVICE.toData(original));
 
-        assertThat(serialized).isEqualTo(original);
+        assertThat(serialized).isEqualToComparingFieldByField(original);
     }
 
     @Test
@@ -60,11 +59,11 @@ public class KvProcessorsTest {
                 new QueryDataType[]{QueryDataType.INT, QueryDataType.VARCHAR},
                 new Boolean[]{false, true},
                 PrimitiveUpsertTargetDescriptor.INSTANCE,
-                HazelcastJsonUpsertTargetDescriptor.INSTANCE
+                PrimitiveUpsertTargetDescriptor.INSTANCE
         );
 
         ProcessorSupplier serialized = SERIALIZATION_SERVICE.toObject(SERIALIZATION_SERVICE.toData(original));
 
-        assertThat(serialized).isEqualTo(original);
+        assertThat(serialized).isEqualToIgnoringGivenFields(original);
     }
 }
