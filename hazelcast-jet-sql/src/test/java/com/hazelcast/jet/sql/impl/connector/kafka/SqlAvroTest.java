@@ -222,7 +222,6 @@ public class SqlAvroTest extends SqlTestSupport {
     }
 
     @Test
-    @SuppressWarnings("checkstyle:LineLength")
     public void test_allTypes() {
         String from = randomName();
         AllTypesSqlConnector.create(sqlService, from);

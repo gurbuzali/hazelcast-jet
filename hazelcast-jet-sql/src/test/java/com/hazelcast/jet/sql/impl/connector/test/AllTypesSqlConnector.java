@@ -76,7 +76,6 @@ public class AllTypesSqlConnector implements SqlConnector {
     );
     private static final List<TableField> FIELD_LIST2 = toList(FIELD_LIST, f -> new TableField(f.name(), f.type(), false));
 
-    @SuppressWarnings("checkstyle:LineLength")
     private static final Object[] VALUES = new Object[]{
             "string",
             true,

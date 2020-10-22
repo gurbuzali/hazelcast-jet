@@ -179,7 +179,6 @@ public class SqlJsonTest extends SqlTestSupport {
     }
 
     @Test
-    @SuppressWarnings("checkstyle:LineLength")
     public void test_allTypes() {
         String from = generateRandomName();
         AllTypesSqlConnector.create(sqlService, from);

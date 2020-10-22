@@ -16,7 +16,6 @@
 
 package com.hazelcast.jet.sql.impl.connector.keyvalue;
 
-import com.hazelcast.function.FunctionEx;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.jet.sql.impl.connector.SqlConnector;
 import com.hazelcast.jet.sql.impl.schema.MappingField;
@@ -30,6 +29,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FORMAT;
@@ -64,7 +64,7 @@ public class KvMetadataResolvers {
 
     private Map<String, KvMetadataResolver> resolversMap(KvMetadataResolver[] resolvers) {
         return Arrays.stream(resolvers)
-                .collect(toMap(KvMetadataResolver::supportedFormat, FunctionEx.identity()));
+                .collect(toMap(KvMetadataResolver::supportedFormat, Function.identity()));
     }
 
     /**

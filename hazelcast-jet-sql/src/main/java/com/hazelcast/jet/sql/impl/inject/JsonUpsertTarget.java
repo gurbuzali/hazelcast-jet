@@ -34,7 +34,6 @@ class JsonUpsertTarget implements UpsertTarget {
     }
 
     @Override
-    @SuppressWarnings("checkstyle:ReturnCount")
     public UpsertInjector createInjector(String path, QueryDataType type) {
         switch (type.getTypeFamily()) {
             case BOOLEAN:

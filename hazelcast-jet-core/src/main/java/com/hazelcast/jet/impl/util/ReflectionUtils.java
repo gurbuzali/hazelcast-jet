@@ -124,7 +124,6 @@ public final class ReflectionUtils {
         return properties;
     }
 
-    @SuppressWarnings({"checkstyle:CyclomaticComplexity", "checkstyle:ReturnCount", "checkstyle:NPathComplexity"})
     private static BiTuple<String, Class<?>> extractProperty(Class<?> clazz, Method method) {
         if (!isGetter(clazz, method)) {
             return null;
