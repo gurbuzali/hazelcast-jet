@@ -83,7 +83,9 @@ class PortableUpsertTarget implements UpsertTarget {
 
     @Override
     public Object conclude() {
-        return toRecord(classDefinition, values);
+        GenericRecord record = toRecord(classDefinition, values);
+        Arrays.fill(values, null);
+        return record;
     }
 
     private static GenericRecord toRecord(ClassDefinition classDefinition, Object[] values) {

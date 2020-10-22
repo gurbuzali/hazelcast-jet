@@ -20,6 +20,7 @@ import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Type;
+import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecordBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -83,6 +84,8 @@ class AvroUpsertTarget implements UpsertTarget {
 
     @Override
     public Object conclude() {
-        return record.build();
+        Record record = this.record.build();
+        this.record = null;
+        return record;
     }
 }

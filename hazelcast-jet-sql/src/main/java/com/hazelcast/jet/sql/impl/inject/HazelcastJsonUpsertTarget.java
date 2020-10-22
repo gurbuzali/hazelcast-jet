@@ -20,7 +20,6 @@ import com.hazelcast.core.HazelcastJsonValue;
 import com.hazelcast.internal.json.Json;
 import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.json.JsonValue;
-import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -101,16 +100,34 @@ class HazelcastJsonUpsertTarget implements UpsertTarget {
             case VARCHAR:
                 return value -> json.add(path, (String) QueryDataType.VARCHAR.convert(value));
             default:
-                return value -> {
-                    if (value == null) {
-                        json.add(path, (String) null);
-                    } else if (value instanceof JsonValue) {
-                        json.add(path, (JsonValue) value);
-                    } else {
-                        throw QueryException.error("Cannot set field \"" + path + "\" of type " + type);
-                    }
-                };
+                return createGenericInjector(path);
         }
+    }
+
+    private UpsertInjector createGenericInjector(String path) {
+        return value -> {
+            if (value == null) {
+                json.add(path, (String) null);
+            } else if (value instanceof JsonValue) {
+                json.add(path, (JsonValue) value);
+            } else if (value instanceof Boolean) {
+                json.add(path, (boolean) value);
+            } else if (value instanceof Byte) {
+                json.add(path, (byte) value);
+            } else if (value instanceof Short) {
+                json.add(path, (short) value);
+            } else if (value instanceof Integer) {
+                json.add(path, (int) value);
+            } else if (value instanceof Long) {
+                json.add(path, (long) value);
+            } else if (value instanceof Float) {
+                json.add(path, (float) value);
+            } else if (value instanceof Double) {
+                json.add(path, (double) value);
+            } else {
+                json.add(path, (String) QueryDataType.VARCHAR.convert(value));
+            }
+        };
     }
 
     @Override

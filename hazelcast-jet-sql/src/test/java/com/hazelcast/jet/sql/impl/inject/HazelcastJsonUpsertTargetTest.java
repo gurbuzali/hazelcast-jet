@@ -19,7 +19,10 @@ package com.hazelcast.jet.sql.impl.inject;
 import com.hazelcast.core.HazelcastJsonValue;
 import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.sql.impl.type.QueryDataType;
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,6 +33,7 @@ import java.time.OffsetDateTime;
 import static java.time.ZoneOffset.UTC;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@RunWith(JUnitParamsRunner.class)
 public class HazelcastJsonUpsertTargetTest {
 
     @Test
@@ -88,5 +92,39 @@ public class HazelcastJsonUpsertTargetTest {
                 + ",\"timestampTz\":\"2020-09-09T12:23:34.200Z\""
                 + "}"
         ));
+    }
+
+    @SuppressWarnings("unused")
+    private Object[] values() {
+        return new Object[]{
+                new Object[]{null, "null"},
+                new Object[]{new JsonObject(), "{}"},
+                new Object[]{"string", "\"string\""},
+                new Object[]{true, "true"},
+                new Object[]{(byte) 127, "127"},
+                new Object[]{(short) 32767, "32767"},
+                new Object[]{2147483647, "2147483647"},
+                new Object[]{9223372036854775807L, "9223372036854775807"},
+                new Object[]{1234567890.1F, "1.23456794E9"},
+                new Object[]{123451234567890.1D, "1.234512345678901E14"},
+                new Object[]{new BigDecimal("9223372036854775.123"), "\"9223372036854775.123\""},
+                new Object[]{LocalTime.of(12, 23, 34), "\"12:23:34\""},
+                new Object[]{LocalDate.of(2020, 9, 9), "\"2020-09-09\""},
+                new Object[]{LocalDateTime.of(2020, 9, 9, 12, 23, 34, 100_000_000), "\"2020-09-09T12:23:34.100\""},
+                new Object[]{OffsetDateTime.of(2020, 9, 9, 12, 23, 34, 200_000_000, UTC), "\"2020-09-09T12:23:34.200Z\""},
+        };
+    }
+
+    @Test
+    @Parameters(method = "values")
+    public void when_typeIsObject_then_allValuesAreAllowed(Object value, String expected) {
+        UpsertTarget target = new HazelcastJsonUpsertTarget();
+        UpsertInjector injector = target.createInjector("object", QueryDataType.OBJECT);
+
+        target.init();
+        injector.set(value);
+        Object hazelcastJson = target.conclude();
+
+        assertThat(hazelcastJson).isEqualTo(new HazelcastJsonValue("{\"object\":" + expected + "}"));
     }
 }
