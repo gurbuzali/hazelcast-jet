@@ -60,7 +60,8 @@ class AvroUpsertTarget implements UpsertTarget {
                     if (value == null) {
                         record.set(path, null);
                     } else {
-                        throw QueryException.error("Cannot set field \"" + path + "\" of type " + type);
+                        throw QueryException.error("Cannot set \"" + value.getClass().getName() + "\" to field \""
+                                                   + path + "\"");
                     }
                 };
         }
