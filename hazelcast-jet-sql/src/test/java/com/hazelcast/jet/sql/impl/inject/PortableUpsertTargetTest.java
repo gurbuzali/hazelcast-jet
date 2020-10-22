@@ -19,11 +19,9 @@ package com.hazelcast.jet.sql.impl.inject;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.DefaultSerializationServiceBuilder;
 import com.hazelcast.internal.serialization.impl.InternalGenericRecord;
+import com.hazelcast.internal.serialization.impl.portable.PortableGenericRecordBuilder;
 import com.hazelcast.nio.serialization.ClassDefinition;
 import com.hazelcast.nio.serialization.ClassDefinitionBuilder;
-import com.hazelcast.nio.serialization.Portable;
-import com.hazelcast.nio.serialization.PortableReader;
-import com.hazelcast.nio.serialization.PortableWriter;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 import org.junit.Test;
@@ -40,8 +38,6 @@ public class PortableUpsertTargetTest {
         InternalSerializationService ss = new DefaultSerializationServiceBuilder().build();
 
         ClassDefinition innerClassDefinition = new ClassDefinitionBuilder(4, 5, 6).build();
-        ss.getPortableContext().registerClassDefinition(innerClassDefinition);
-
         ClassDefinition classDefinition =
                 new ClassDefinitionBuilder(1, 2, 3)
                         .addPortableField("null", innerClassDefinition)
@@ -76,7 +72,7 @@ public class PortableUpsertTargetTest {
 
         target.init();
         nullFieldInjector.set(null);
-        objectFieldInjector.set(new InnerPortable());
+        objectFieldInjector.set(new PortableGenericRecordBuilder(innerClassDefinition).build());
         stringFieldInjector.set("1");
         characterFieldInjector.set('2');
         booleanFieldInjector.set(true);
@@ -120,7 +116,7 @@ public class PortableUpsertTargetTest {
         target.init();
         assertThatThrownBy(() -> injector.set("1"))
                 .isInstanceOf(QueryException.class)
-                .hasMessageContaining("Unable to inject a non-null value to 'field'");
+                .hasMessageContaining("Unable to inject a non-null value to \"field\"");
     }
 
     @Test
@@ -144,26 +140,5 @@ public class PortableUpsertTargetTest {
 
         InternalGenericRecord record = ss.readAsInternalGenericRecord(ss.toData(portable));
         assertThat(record).isNotNull();
-    }
-
-    private static final class InnerPortable implements Portable {
-
-        @Override
-        public int getFactoryId() {
-            return 4;
-        }
-
-        @Override
-        public int getClassId() {
-            return 5;
-        }
-
-        @Override
-        public void writePortable(PortableWriter writer) {
-        }
-
-        @Override
-        public void readPortable(PortableReader reader) {
-        }
     }
 }

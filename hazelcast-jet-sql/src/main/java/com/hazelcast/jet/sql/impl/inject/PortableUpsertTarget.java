@@ -17,32 +17,31 @@
 package com.hazelcast.jet.sql.impl.inject;
 
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.internal.serialization.impl.portable.PortableGenericRecordBuilder;
 import com.hazelcast.nio.serialization.ClassDefinition;
 import com.hazelcast.nio.serialization.FieldDefinition;
 import com.hazelcast.nio.serialization.FieldType;
-import com.hazelcast.nio.serialization.Portable;
-import com.hazelcast.nio.serialization.PortableReader;
-import com.hazelcast.nio.serialization.PortableWriter;
-import com.hazelcast.nio.serialization.VersionedPortable;
+import com.hazelcast.nio.serialization.GenericRecord;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 
 @NotThreadSafe
 class PortableUpsertTarget implements UpsertTarget {
 
     private final ClassDefinition classDefinition;
 
-    private GenericPortable portable;
+    private final Object[] values;
 
     PortableUpsertTarget(
             InternalSerializationService serializationService,
             int factoryId, int classId, int classVersion
     ) {
         this.classDefinition = lookupClassDefinition(serializationService, factoryId, classId, classVersion);
+
+        this.values = new Object[classDefinition.getFieldCount()];
     }
 
     private static ClassDefinition lookupClassDefinition(
@@ -68,108 +67,73 @@ class PortableUpsertTarget implements UpsertTarget {
         int fieldIndex = classDefinition.hasField(path) ? classDefinition.getField(path).getIndex() : -1;
         return value -> {
             if (fieldIndex == -1 && value != null) {
-                throw QueryException.error("Unable to inject a non-null value to '" + path + "'");
+                throw QueryException.error("Unable to inject a non-null value to \"" + path + "\"");
             }
 
             if (fieldIndex > -1) {
-                portable.set(fieldIndex, value);
+                values[fieldIndex] = value;
             }
         };
     }
 
     @Override
     public void init() {
-        portable = new GenericPortable(classDefinition.getFieldCount());
+        Arrays.fill(values, null);
     }
 
     @Override
     public Object conclude() {
-        GenericPortable portable = this.portable;
-        this.portable = null;
-        return portable;
+        return toRecord(classDefinition, values);
     }
 
-    private final class GenericPortable implements VersionedPortable {
-
-        private final Object[] values;
-
-        private GenericPortable(int size) {
-            this.values = new Object[size];
-        }
-
-        private void set(int fieldIndex, Object value) {
-            values[fieldIndex] = value;
-        }
-
-        @Override
-        public int getFactoryId() {
-            return classDefinition.getFactoryId();
-        }
-
-        @Override
-        public int getClassId() {
-            return classDefinition.getClassId();
-        }
-
-        @Override
-        public int getClassVersion() {
-            return classDefinition.getVersion();
-        }
-
-        @Override
-        public void writePortable(PortableWriter writer) throws IOException {
-            for (int i = 0; i < classDefinition.getFieldCount(); i++) {
-                FieldDefinition fieldDefinition = classDefinition.getField(i);
-                write(writer, fieldDefinition, values[i]);
-            }
-        }
-
-        @SuppressWarnings("checkstyle:cyclomaticcomplexity")
-        private void write(PortableWriter writer, FieldDefinition fieldDefinition, Object value) throws IOException {
+    private static GenericRecord toRecord(ClassDefinition classDefinition, Object[] values) {
+        PortableGenericRecordBuilder portable = new PortableGenericRecordBuilder(classDefinition);
+        for (int i = 0; i < classDefinition.getFieldCount(); i++) {
+            FieldDefinition fieldDefinition = classDefinition.getField(i);
             String name = fieldDefinition.getName();
             FieldType type = fieldDefinition.getType();
+
+            Object value = values[i];
+
             switch (type) {
                 case BOOLEAN:
-                    writer.writeBoolean(name, value != null && (boolean) value);
+                    portable.writeBoolean(name, value != null && (boolean) value);
                     break;
                 case BYTE:
-                    writer.writeByte(name, value == null ? (byte) 0 : (byte) value);
+                    portable.writeByte(name, value == null ? (byte) 0 : (byte) value);
                     break;
                 case SHORT:
-                    writer.writeShort(name, value == null ? (short) 0 : (short) value);
+                    portable.writeShort(name, value == null ? (short) 0 : (short) value);
                     break;
                 case CHAR:
-                    writer.writeChar(name, value == null ? (char) 0 : (char) value);
+                    portable.writeChar(name, value == null ? (char) 0 : (char) value);
                     break;
                 case INT:
-                    writer.writeInt(name, value == null ? 0 : (int) value);
+                    portable.writeInt(name, value == null ? 0 : (int) value);
                     break;
                 case LONG:
-                    writer.writeLong(name, value == null ? 0L : (long) value);
+                    portable.writeLong(name, value == null ? 0L : (long) value);
                     break;
                 case FLOAT:
-                    writer.writeFloat(name, value == null ? 0F : (float) value);
+                    portable.writeFloat(name, value == null ? 0F : (float) value);
                     break;
                 case DOUBLE:
-                    writer.writeDouble(name, value == null ? 0D : (double) value);
+                    portable.writeDouble(name, value == null ? 0D : (double) value);
                     break;
                 case UTF:
-                    writer.writeUTF(name, (String) QueryDataType.VARCHAR.convert(value));
+                    portable.writeUTF(name, (String) QueryDataType.VARCHAR.convert(value));
                     break;
                 default:
                     if (value == null) {
-                        writer.writePortable(name, null);
-                    } else if (value instanceof Portable) {
-                        writer.writePortable(name, (Portable) value);
+                        portable.writeGenericRecord(name, null);
+                    } else if (value instanceof GenericRecord) {
+                        portable.writeGenericRecord(name, (GenericRecord) value);
                     } else {
-                        throw QueryException.error("Cannot set field \"" + name + "\" of type " + type);
+                        throw QueryException.error("Cannot set \"" + value.getClass().getName() + "\" to field \""
+                                                   + name + "\"");
                     }
             }
         }
-
-        @Override
-        public void readPortable(PortableReader reader) throws IOException {
-            throw new UnsupportedEncodingException();
-        }
+        return portable.build();
     }
 }
