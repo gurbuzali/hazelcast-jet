@@ -25,6 +25,7 @@ import com.hazelcast.sql.impl.extract.QueryPath;
 import com.hazelcast.sql.impl.schema.TableField;
 import com.hazelcast.sql.impl.schema.map.MapTableField;
 import com.hazelcast.sql.impl.type.QueryDataType;
+import com.hazelcast.sql.impl.type.QueryDataTypeFamily;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
@@ -106,7 +107,8 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
 
         FieldAssembler<Schema> schema = SchemaBuilder.record("jet.sql").fields();
         for (int i = 0; i < fields.size(); i++) {
-            switch (types[i].getTypeFamily()) {
+            QueryDataType type = types[i];
+            switch (type.getTypeFamily()) {
                 case BOOLEAN:
                     schema = schema.name(paths[i].getPath()).type()
                                    .unionOf().nullType().and().booleanType().endUnion()
@@ -145,8 +147,17 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
                                    .nullDefault();
                     break;
                 default:
+                    assert type.getTypeFamily() == QueryDataTypeFamily.OBJECT : type.getTypeFamily();
                     schema = schema.name(paths[i].getPath()).type()
+                                   .unionOf()
                                    .nullType()
+                                   .and().booleanType()
+                                   .and().intType()
+                                   .and().longType()
+                                   .and().floatType()
+                                   .and().doubleType()
+                                   .and().stringType()
+                                   .endUnion()
                                    .nullDefault();
             }
         }

@@ -19,6 +19,7 @@ package com.hazelcast.jet.sql.impl.inject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -34,6 +35,7 @@ class JsonUpsertTarget implements UpsertTarget {
     }
 
     @Override
+    @SuppressWarnings("checkstyle:ReturnCount")
     public UpsertInjector createInjector(String path, QueryDataType type) {
         switch (type.getTypeFamily()) {
             case BOOLEAN:
@@ -63,12 +65,14 @@ class JsonUpsertTarget implements UpsertTarget {
             case TIMESTAMP_WITH_TIME_ZONE:
             case VARCHAR:
                 return value -> json.put(path, (String) QueryDataType.VARCHAR.convert(value));
+            case OBJECT:
+                return createObjectInjector(path);
             default:
-                return createGenericInjector(path);
+                throw QueryException.error("Unsupported type: " + type);
         }
     }
 
-    private UpsertInjector createGenericInjector(String path) {
+    private UpsertInjector createObjectInjector(String path) {
         return value -> {
             if (value == null) {
                 json.putNull(path);

@@ -98,6 +98,7 @@ public class KvMetadataAvroResolverTest {
             "true, __key",
             "false, this"
     })
+    @SuppressWarnings("checkstyle:LineLength")
     public void test_resolveMetadata(boolean key, String prefix) {
         KvMetadata metadata = INSTANCE.resolveMetadata(
                 key,
@@ -159,7 +160,7 @@ public class KvMetadataAvroResolverTest {
                                         + ",{\"name\":\"date\",\"type\":[\"null\",\"string\"],\"default\":null}"
                                         + ",{\"name\":\"timestamp\",\"type\":[\"null\",\"string\"],\"default\":null}"
                                         + ",{\"name\":\"timestampTz\",\"type\":[\"null\",\"string\"],\"default\":null}"
-                                        + ",{\"name\":\"object\",\"type\":\"null\",\"default\":null}"
+                                        + ",{\"name\":\"object\",\"type\":[\"null\",\"boolean\",\"int\",\"long\",\"float\",\"double\",\"string\"],\"default\":null}"
                                         + "]"
                                         + "}"
                         )

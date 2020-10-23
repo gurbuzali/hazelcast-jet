@@ -96,44 +96,75 @@ class PortableUpsertTarget implements UpsertTarget {
             FieldType type = fieldDefinition.getType();
 
             Object value = values[i];
-
-            switch (type) {
-                case BOOLEAN:
-                    portable.writeBoolean(name, value != null && (boolean) value);
-                    break;
-                case BYTE:
-                    portable.writeByte(name, value == null ? (byte) 0 : (byte) value);
-                    break;
-                case SHORT:
-                    portable.writeShort(name, value == null ? (short) 0 : (short) value);
-                    break;
-                case CHAR:
-                    portable.writeChar(name, value == null ? (char) 0 : (char) value);
-                    break;
-                case INT:
-                    portable.writeInt(name, value == null ? 0 : (int) value);
-                    break;
-                case LONG:
-                    portable.writeLong(name, value == null ? 0L : (long) value);
-                    break;
-                case FLOAT:
-                    portable.writeFloat(name, value == null ? 0F : (float) value);
-                    break;
-                case DOUBLE:
-                    portable.writeDouble(name, value == null ? 0D : (double) value);
-                    break;
-                case UTF:
-                    portable.writeUTF(name, (String) QueryDataType.VARCHAR.convert(value));
-                    break;
-                default:
-                    if (value == null) {
-                        portable.writeGenericRecord(name, null);
-                    } else if (value instanceof GenericRecord) {
+            try {
+                switch (type) {
+                    case BOOLEAN:
+                        portable.writeBoolean(name, value != null && (boolean) value);
+                        break;
+                    case BYTE:
+                        portable.writeByte(name, value == null ? (byte) 0 : (byte) value);
+                        break;
+                    case SHORT:
+                        portable.writeShort(name, value == null ? (short) 0 : (short) value);
+                        break;
+                    case CHAR:
+                        portable.writeChar(name, value == null ? (char) 0 : (char) value);
+                        break;
+                    case INT:
+                        portable.writeInt(name, value == null ? 0 : (int) value);
+                        break;
+                    case LONG:
+                        portable.writeLong(name, value == null ? 0L : (long) value);
+                        break;
+                    case FLOAT:
+                        portable.writeFloat(name, value == null ? 0F : (float) value);
+                        break;
+                    case DOUBLE:
+                        portable.writeDouble(name, value == null ? 0D : (double) value);
+                        break;
+                    case UTF:
+                        portable.writeUTF(name, (String) QueryDataType.VARCHAR.convert(value));
+                        break;
+                    case PORTABLE:
                         portable.writeGenericRecord(name, (GenericRecord) value);
-                    } else {
-                        throw QueryException.error("Cannot set \"" + value.getClass().getName() + "\" to field \""
-                                                   + name + "\"");
-                    }
+                        break;
+                    case BOOLEAN_ARRAY:
+                        portable.writeBooleanArray(name, (boolean[]) value);
+                        break;
+                    case BYTE_ARRAY:
+                        portable.writeByteArray(name, (byte[]) value);
+                        break;
+                    case SHORT_ARRAY:
+                        portable.writeShortArray(name, (short[]) value);
+                        break;
+                    case CHAR_ARRAY:
+                        portable.writeCharArray(name, (char[]) value);
+                        break;
+                    case INT_ARRAY:
+                        portable.writeIntArray(name, (int[]) value);
+                        break;
+                    case LONG_ARRAY:
+                        portable.writeLongArray(name, (long[]) value);
+                        break;
+                    case FLOAT_ARRAY:
+                        portable.writeFloatArray(name, (float[]) value);
+                        break;
+                    case DOUBLE_ARRAY:
+                        portable.writeDoubleArray(name, (double[]) value);
+                        break;
+                    case UTF_ARRAY:
+                        portable.writeUTFArray(name, (String[]) value);
+                        break;
+                    case PORTABLE_ARRAY:
+                        portable.writeGenericRecordArray(name, (GenericRecord[]) value);
+                        break;
+                    default:
+                        throw QueryException.error("Unsupported type: " + type);
+                }
+            } catch (Exception e) {
+                throw QueryException.error("Cannot set value " +
+                                           (value == null ? "null" : " of type " + value.getClass().getName())
+                                           + " to field \"" + name + "\" of type " + type + ": " + e.getMessage(), e);
             }
         }
         return portable.build();

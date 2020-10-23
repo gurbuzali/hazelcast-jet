@@ -20,6 +20,7 @@ import com.hazelcast.core.HazelcastJsonValue;
 import com.hazelcast.internal.json.Json;
 import com.hazelcast.internal.json.JsonObject;
 import com.hazelcast.internal.json.JsonValue;
+import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -99,12 +100,14 @@ class HazelcastJsonUpsertTarget implements UpsertTarget {
             case TIMESTAMP_WITH_TIME_ZONE:
             case VARCHAR:
                 return value -> json.add(path, (String) QueryDataType.VARCHAR.convert(value));
+            case OBJECT:
+                return createObjectInjector(path);
             default:
-                return createGenericInjector(path);
+                throw QueryException.error("Unsupported type: " + type);
         }
     }
 
-    private UpsertInjector createGenericInjector(String path) {
+    private UpsertInjector createObjectInjector(String path) {
         return value -> {
             if (value == null) {
                 json.add(path, (String) null);

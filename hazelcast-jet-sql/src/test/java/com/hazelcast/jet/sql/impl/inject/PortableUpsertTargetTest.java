@@ -22,15 +22,20 @@ import com.hazelcast.internal.serialization.impl.InternalGenericRecord;
 import com.hazelcast.internal.serialization.impl.portable.PortableGenericRecordBuilder;
 import com.hazelcast.nio.serialization.ClassDefinition;
 import com.hazelcast.nio.serialization.ClassDefinitionBuilder;
+import com.hazelcast.nio.serialization.GenericRecord;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@RunWith(JUnitParamsRunner.class)
 public class PortableUpsertTargetTest {
 
     @Test
@@ -96,6 +101,59 @@ public class PortableUpsertTargetTest {
         assertThat(record.readLong("long")).isEqualTo(6L);
         assertThat(record.readFloat("float")).isEqualTo(7.1F);
         assertThat(record.readDouble("double")).isEqualTo(7.2D);
+    }
+
+    @SuppressWarnings({"unused", "checkstyle:LineLength"})
+    private Object[] values() {
+        ClassDefinition innerClassDefinition = new ClassDefinitionBuilder(4, 5, 6).build();
+
+        return new Object[]{
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addPortableField("object", innerClassDefinition).build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addPortableField("object", innerClassDefinition).build(), new PortableGenericRecordBuilder(innerClassDefinition).build()},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addBooleanArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addBooleanArrayField("object").build(), new boolean[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addByteArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addByteArrayField("object").build(), new byte[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addShortArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addShortArrayField("object").build(), new short[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addCharArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addCharArrayField("object").build(), new char[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addIntArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addIntArrayField("object").build(), new int[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addLongArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addLongArrayField("object").build(), new long[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addFloatArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addFloatArrayField("object").build(), new float[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addDoubleArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addDoubleArrayField("object").build(), new double[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addUTFArrayField("object").build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addUTFArrayField("object").build(), new String[0]},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addPortableArrayField("object", innerClassDefinition).build(), null},
+                new Object[]{new ClassDefinitionBuilder(1, 2, 3).addPortableArrayField("object", innerClassDefinition).build(), new GenericRecord[0]},
+        };
+    }
+
+    @Test
+    @Parameters(method = "values")
+    public void when_typeIsObject_then_allValuesAreAllowed(
+            ClassDefinition classDefinition,
+            Object value
+    ) throws IOException {
+        InternalSerializationService ss = new DefaultSerializationServiceBuilder().build();
+        ss.getPortableContext().registerClassDefinition(classDefinition);
+
+        UpsertTarget target = new PortableUpsertTarget(
+                ss,
+                classDefinition.getFactoryId(), classDefinition.getClassId(), classDefinition.getVersion()
+        );
+        UpsertInjector injector = target.createInjector("object", QueryDataType.OBJECT);
+
+        target.init();
+        injector.set(value);
+        Object portable = target.conclude();
+
+        InternalGenericRecord record = ss.readAsInternalGenericRecord(ss.toData(portable));
+        assertThat(record.hasField("object")).isTrue();
     }
 
     @Test

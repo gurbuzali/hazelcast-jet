@@ -19,7 +19,7 @@ package com.hazelcast.jet.sql.impl.inject;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 import org.apache.avro.Schema;
-import org.apache.avro.Schema.Type;
+import org.apache.avro.generic.GenericContainer;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecordBuilder;
 
@@ -38,43 +38,53 @@ class AvroUpsertTarget implements UpsertTarget {
 
     @Override
     public UpsertInjector createInjector(String path, QueryDataType type) {
-        switch (extractType(path)) {
+        switch (type.getTypeFamily()) {
+            case TINYINT:
+                return value -> record.set(path, value == null ? null : ((Byte) value).intValue());
+            case SMALLINT:
+                return value -> record.set(path, value == null ? null : ((Short) value).intValue());
             case BOOLEAN:
-            case INT:
-                return value -> {
-                    if (value instanceof Byte) {
-                        record.set(path, ((Byte) value).intValue());
-                    } else if (value instanceof Short) {
-                        record.set(path, ((Short) value).intValue());
-                    } else {
-                        record.set(path, value);
-                    }
-                };
-            case LONG:
-            case FLOAT:
+            case INTEGER:
+            case BIGINT:
+            case REAL:
             case DOUBLE:
                 return value -> record.set(path, value);
-            case STRING:
+            case DECIMAL:
+            case TIME:
+            case DATE:
+            case TIMESTAMP:
+            case TIMESTAMP_WITH_TIME_ZONE:
+            case VARCHAR:
                 return value -> record.set(path, QueryDataType.VARCHAR.convert(value));
+            case OBJECT:
+                return createObjectInjector(path);
             default:
-                return value -> {
-                    if (value == null) {
-                        record.set(path, null);
-                    } else {
-                        throw QueryException.error("Cannot set \"" + value.getClass().getName() + "\" to field \""
-                                                   + path + "\"");
-                    }
-                };
+                throw QueryException.error("Unsupported type: " + type);
         }
     }
 
-    private Type extractType(String path) {
-        Schema schema = this.schema.getField(path).schema();
-        if (schema.getType() == Type.UNION) {
-            assert schema.getTypes().get(0).getType() == Type.NULL : schema.getTypes().get(0).getType();
-            return schema.getTypes().get(1).getType();
-        }
-        return schema.getType();
+    private UpsertInjector createObjectInjector(String path) {
+        return value -> {
+            if (value == null) {
+                record.set(path, null);
+            } else if (value instanceof GenericContainer) {
+                throw QueryException.error("Cannot set value of type " + value.getClass().getName()
+                                           + " to field \"" + path + "\"");
+            } else if (value instanceof Byte) {
+                record.set(path, ((Byte) value).intValue());
+            } else if (value instanceof Short) {
+                record.set(path, ((Short) value).intValue());
+            } else if (value instanceof Boolean
+                       || value instanceof Integer
+                       || value instanceof Long
+                       || value instanceof Float
+                       || value instanceof Double
+            ) {
+                record.set(path, value);
+            } else {
+                record.set(path, QueryDataType.VARCHAR.convert(value));
+            }
+        };
     }
 
     @Override
