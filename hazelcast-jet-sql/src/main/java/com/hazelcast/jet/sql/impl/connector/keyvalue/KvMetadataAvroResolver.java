@@ -25,7 +25,6 @@ import com.hazelcast.sql.impl.extract.QueryPath;
 import com.hazelcast.sql.impl.schema.TableField;
 import com.hazelcast.sql.impl.schema.map.MapTableField;
 import com.hazelcast.sql.impl.type.QueryDataType;
-import com.hazelcast.sql.impl.type.QueryDataTypeFamily;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
@@ -146,8 +145,7 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
                                    .unionOf().nullType().and().stringType().endUnion()
                                    .nullDefault();
                     break;
-                default:
-                    assert type.getTypeFamily() == QueryDataTypeFamily.OBJECT : type.getTypeFamily();
+                case OBJECT:
                     schema = schema.name(paths[i].getPath()).type()
                                    .unionOf()
                                    .nullType()
@@ -159,6 +157,9 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
                                    .and().stringType()
                                    .endUnion()
                                    .nullDefault();
+                    break;
+                default:
+                    throw QueryException.error("unknown type: " + type.getTypeFamily());
             }
         }
         return schema.endRecord();
