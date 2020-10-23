@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static com.hazelcast.function.FunctionEx.identity;
 import static com.hazelcast.jet.sql.impl.opt.JetConventions.LOGICAL;
 
 final class AggregatePhysicalRule extends RelOptRule {
@@ -109,7 +108,7 @@ final class AggregatePhysicalRule extends RelOptRule {
                     logicalAggregate.getGroupSet(),
                     logicalAggregate.getGroupSets(),
                     logicalAggregate.getAggCallList(),
-                    aggrOp.withCombiningAccumulateFn(identity())
+                    aggrOp
             );
         }
     }
@@ -147,7 +146,7 @@ final class AggregatePhysicalRule extends RelOptRule {
                     logicalAggregate.getGroupSet(),
                     logicalAggregate.getGroupSets(),
                     logicalAggregate.getAggCallList(),
-                    aggrOp.withCombiningAccumulateFn(identity())
+                    aggrOp
             );
         }
     }

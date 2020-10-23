@@ -163,7 +163,7 @@ public class CreateDagVisitor {
 
         Vertex vertex = dag.newVertex(
                 name("AggregateByKey"),
-                Processors.aggregateByKeyP(singletonList(groupKeyFn), aggregateOperation, (aggregation, row) -> row)
+                Processors.aggregateByKeyP(singletonList(groupKeyFn), aggregateOperation, (key, value) -> value)
         );
         connectInput(rel.getInput(), vertex, edge -> edge.partitioned(groupKeyFn).distributed());
         return vertex;
@@ -186,7 +186,7 @@ public class CreateDagVisitor {
 
         Vertex vertex = dag.newVertex(
                 name("CombineByKey"),
-                Processors.combineByKeyP(aggregateOperation, (aggregation, row) -> row)
+                Processors.combineByKeyP(aggregateOperation, (key, value) -> value)
         );
         connectInput(rel.getInput(), vertex, edge -> edge.partitioned(entryKey()).distributed());
         return vertex;
