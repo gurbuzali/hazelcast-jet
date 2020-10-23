@@ -32,11 +32,11 @@ import org.apache.calcite.util.ImmutableBitSet;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRel {
+public class AggregatePhysicalRel extends Aggregate implements PhysicalRel {
 
     private final AggregateOperation<SqlAggregations, Object[]> aggrOp;
 
-    AggregateCombinePhysicalRel(
+    AggregatePhysicalRel(
             RelOptCluster cluster,
             RelTraitSet traits,
             RelNode input,
@@ -61,7 +61,7 @@ public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRe
 
     @Override
     public Vertex visit(CreateDagVisitor visitor) {
-        return visitor.onCombine(this);
+        return visitor.onAggregate(this);
     }
 
     @Override
@@ -72,6 +72,6 @@ public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRe
             List<ImmutableBitSet> groupSets,
             List<AggregateCall> aggCalls
     ) {
-        return new AggregateCombinePhysicalRel(getCluster(), traitSet, input, groupSet, groupSets, aggCalls, aggrOp);
+        return new AggregatePhysicalRel(getCluster(), traitSet, input, groupSet, groupSets, aggCalls, aggrOp);
     }
 }

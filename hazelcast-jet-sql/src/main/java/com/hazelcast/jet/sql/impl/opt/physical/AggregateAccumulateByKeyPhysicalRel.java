@@ -16,35 +16,46 @@
 
 package com.hazelcast.jet.sql.impl.opt.physical;
 
+import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.aggregate.AggregateOperation;
 import com.hazelcast.jet.core.Vertex;
+import com.hazelcast.jet.sql.impl.aggregate.ObjectArray;
+import com.hazelcast.jet.sql.impl.aggregate.SqlAggregations;
 import com.hazelcast.jet.sql.impl.opt.physical.visitor.CreateDagVisitor;
 import com.hazelcast.sql.impl.plan.node.PlanNodeSchema;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.RelWriter;
 import org.apache.calcite.rel.SingleRel;
+import org.apache.calcite.util.ImmutableBitSet;
 
 import java.util.List;
 
-public class AggregateGroupPhysicalRel extends SingleRel implements PhysicalRel {
+public class AggregateAccumulateByKeyPhysicalRel extends SingleRel implements PhysicalRel {
 
-    private final AggregateOperation<?, Object[]> aggregateOperation;
+    private final ImmutableBitSet groupSet;
+    private final AggregateOperation<SqlAggregations, Object[]> aggrOp;
 
-    AggregateGroupPhysicalRel(
+    AggregateAccumulateByKeyPhysicalRel(
             RelOptCluster cluster,
             RelTraitSet traits,
             RelNode input,
-            AggregateOperation<?, Object[]> aggregateOperation
-
+            ImmutableBitSet groupSet,
+            AggregateOperation<SqlAggregations, Object[]> aggrOp
     ) {
         super(cluster, traits, input);
 
-        this.aggregateOperation = aggregateOperation;
+        this.groupSet = groupSet;
+        this.aggrOp = aggrOp;
     }
 
-    public AggregateOperation<?, Object[]> aggregateOperation() {
-        return aggregateOperation;
+    public FunctionEx<Object[], Object> groupKeyFn() {
+        return ObjectArray.projectFn(groupSet.toArray());
+    }
+
+    public AggregateOperation<?, Object[]> aggrOp() {
+        return aggrOp;
     }
 
     @Override
@@ -55,11 +66,17 @@ public class AggregateGroupPhysicalRel extends SingleRel implements PhysicalRel 
 
     @Override
     public Vertex visit(CreateDagVisitor visitor) {
-        return visitor.onGroup(this);
+        return visitor.onAccumulateByKey(this);
+    }
+
+    @Override
+    public RelWriter explainTerms(RelWriter pw) {
+        return super.explainTerms(pw)
+                    .item("group", groupSet);
     }
 
     @Override
     public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
-        return new AggregateGroupPhysicalRel(getCluster(), traitSet, sole(inputs), aggregateOperation);
+        return new AggregateAccumulateByKeyPhysicalRel(getCluster(), traitSet, sole(inputs), groupSet, aggrOp);
     }
 }

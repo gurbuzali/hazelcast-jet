@@ -64,6 +64,6 @@ public class KvProcessorsTest {
 
         ProcessorSupplier serialized = SERIALIZATION_SERVICE.toObject(SERIALIZATION_SERVICE.toData(original));
 
-        assertThat(serialized).isEqualToIgnoringGivenFields(original);
+        assertThat(serialized).isEqualToComparingFieldByField(original);
     }
 }

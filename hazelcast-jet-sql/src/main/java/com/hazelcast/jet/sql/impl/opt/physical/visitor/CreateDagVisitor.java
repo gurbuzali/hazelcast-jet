@@ -27,11 +27,13 @@ import com.hazelcast.jet.core.ProcessorMetaSupplier;
 import com.hazelcast.jet.core.ProcessorSupplier;
 import com.hazelcast.jet.core.Vertex;
 import com.hazelcast.jet.core.processor.Processors;
-import com.hazelcast.jet.sql.impl.aggregate.SqlAggregations;
 import com.hazelcast.jet.sql.impl.expression.ExpressionUtil;
+import com.hazelcast.jet.sql.impl.opt.physical.AggregateAccumulateByKeyPhysicalRel;
+import com.hazelcast.jet.sql.impl.opt.physical.AggregateAccumulatePhysicalRel;
+import com.hazelcast.jet.sql.impl.opt.physical.AggregateByKeyPhysicalRel;
+import com.hazelcast.jet.sql.impl.opt.physical.AggregateCombineByKeyPhysicalRel;
 import com.hazelcast.jet.sql.impl.opt.physical.AggregateCombinePhysicalRel;
-import com.hazelcast.jet.sql.impl.opt.physical.AggregateGroupByKeyPhysicalRel;
-import com.hazelcast.jet.sql.impl.opt.physical.AggregateGroupPhysicalRel;
+import com.hazelcast.jet.sql.impl.opt.physical.AggregatePhysicalRel;
 import com.hazelcast.jet.sql.impl.opt.physical.FilterPhysicalRel;
 import com.hazelcast.jet.sql.impl.opt.physical.FullScanPhysicalRel;
 import com.hazelcast.jet.sql.impl.opt.physical.InsertPhysicalRel;
@@ -47,6 +49,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static com.hazelcast.function.Functions.entryKey;
 import static com.hazelcast.jet.core.Edge.between;
 import static com.hazelcast.jet.core.processor.Processors.filterP;
 import static com.hazelcast.jet.core.processor.Processors.mapP;
@@ -115,52 +118,77 @@ public class CreateDagVisitor {
         return vertex;
     }
 
-    public Vertex onGroup(AggregateGroupPhysicalRel rel) {
-        AggregateOperation<?, Object[]> aggregateOperation = rel.aggregateOperation();
+    public Vertex onAggregate(AggregatePhysicalRel rel) {
+        AggregateOperation<?, Object[]> aggregateOperation = rel.aggrOp();
 
         Vertex vertex = dag.newVertex(
-                name("Aggregate-Accumulate"),
+                name("Aggregate"),
+                ProcessorMetaSupplier.forceTotalParallelismOne(
+                        ProcessorSupplier.of(Processors.aggregateP(aggregateOperation)),
+                        localMemberAddress
+                )
+        );
+        connectInput(rel.getInput(), vertex, edge -> edge.allToOne("").distributeTo(localMemberAddress));
+        return vertex;
+    }
+
+    public Vertex onAccumulate(AggregateAccumulatePhysicalRel rel) {
+        AggregateOperation<?, Object[]> aggregateOperation = rel.aggrOp();
+
+        Vertex vertex = dag.newVertex(
+                name("Accumulate"),
                 Processors.accumulateP(aggregateOperation)
         );
         connectInput(rel.getInput(), vertex, null);
         return vertex;
     }
 
-    public Vertex onGroupByKey(AggregateGroupByKeyPhysicalRel rel) {
-        FunctionEx<Object[], Object> groupKeyFn = rel.groupKeyFn();
-        AggregateOperation<?, Object[]> aggregateOperation = rel.aggregateOperation();
-
-        Vertex vertex = dag.newVertex(
-                name("Aggregate-Accumulate"),
-                Processors.accumulateByKeyP(singletonList(groupKeyFn), aggregateOperation)
-        );
-        connectInput(rel.getInput(), vertex, edge -> {
-            edge.partitioned(groupKeyFn);
-            if (rel.distributed()) {
-                edge.distributed();
-            }
-        });
-        return vertex;
-    }
-
     public Vertex onCombine(AggregateCombinePhysicalRel rel) {
-        FunctionEx<Object, Object> groupKeyFn = rel.groupKeyFn();
-        AggregateOperation<SqlAggregations, Object[]> aggregateOperation = rel.aggregateOperation();
+        AggregateOperation<?, Object[]> aggregateOperation = rel.aggrOp();
 
         Vertex vertex = dag.newVertex(
-                name("Aggregate-Combine"),
+                name("Combine"),
                 ProcessorMetaSupplier.forceTotalParallelismOne(
-                        ProcessorSupplier.of(
-                                Processors.aggregateByKeyP(
-                                        singletonList(groupKeyFn),
-                                        aggregateOperation,
-                                        (key, value) -> value
-                                )
-                        ),
+                        ProcessorSupplier.of(Processors.combineP(aggregateOperation)),
                         localMemberAddress
                 )
         );
         connectInput(rel.getInput(), vertex, edge -> edge.allToOne("").distributeTo(localMemberAddress));
+        return vertex;
+    }
+
+    public Vertex onAggregateByKey(AggregateByKeyPhysicalRel rel) {
+        FunctionEx<Object[], Object> groupKeyFn = rel.groupKeyFn();
+        AggregateOperation<?, Object[]> aggregateOperation = rel.aggrOp();
+
+        Vertex vertex = dag.newVertex(
+                name("AggregateByKey"),
+                Processors.aggregateByKeyP(singletonList(groupKeyFn), aggregateOperation, (aggregation, row) -> row)
+        );
+        connectInput(rel.getInput(), vertex, edge -> edge.partitioned(groupKeyFn).distributed());
+        return vertex;
+    }
+
+    public Vertex onAccumulateByKey(AggregateAccumulateByKeyPhysicalRel rel) {
+        FunctionEx<Object[], Object> groupKeyFn = rel.groupKeyFn();
+        AggregateOperation<?, Object[]> aggregateOperation = rel.aggrOp();
+
+        Vertex vertex = dag.newVertex(
+                name("AccumulateByKey"),
+                Processors.accumulateByKeyP(singletonList(groupKeyFn), aggregateOperation)
+        );
+        connectInput(rel.getInput(), vertex, edge -> edge.partitioned(groupKeyFn));
+        return vertex;
+    }
+
+    public Vertex onCombineByKey(AggregateCombineByKeyPhysicalRel rel) {
+        AggregateOperation<?, Object[]> aggregateOperation = rel.aggrOp();
+
+        Vertex vertex = dag.newVertex(
+                name("CombineByKey"),
+                Processors.combineByKeyP(aggregateOperation, (aggregation, row) -> row)
+        );
+        connectInput(rel.getInput(), vertex, edge -> edge.partitioned(entryKey()).distributed());
         return vertex;
     }
 

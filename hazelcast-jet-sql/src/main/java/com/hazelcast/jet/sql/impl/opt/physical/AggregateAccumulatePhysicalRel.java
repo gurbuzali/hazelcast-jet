@@ -18,60 +18,48 @@ package com.hazelcast.jet.sql.impl.opt.physical;
 
 import com.hazelcast.jet.aggregate.AggregateOperation;
 import com.hazelcast.jet.core.Vertex;
-import com.hazelcast.jet.sql.impl.aggregate.SqlAggregations;
-import com.hazelcast.jet.sql.impl.opt.OptUtils;
 import com.hazelcast.jet.sql.impl.opt.physical.visitor.CreateDagVisitor;
 import com.hazelcast.sql.impl.plan.node.PlanNodeSchema;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.Aggregate;
-import org.apache.calcite.rel.core.AggregateCall;
-import org.apache.calcite.util.ImmutableBitSet;
+import org.apache.calcite.rel.SingleRel;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRel {
+public class AggregateAccumulatePhysicalRel extends SingleRel implements PhysicalRel {
 
-    private final AggregateOperation<SqlAggregations, Object[]> aggrOp;
+    private final AggregateOperation<?, Object[]> aggrOp;
 
-    AggregateCombinePhysicalRel(
+    AggregateAccumulatePhysicalRel(
             RelOptCluster cluster,
             RelTraitSet traits,
             RelNode input,
-            ImmutableBitSet groupSet,
-            List<ImmutableBitSet> groupSets,
-            List<AggregateCall> aggCalls,
-            AggregateOperation<SqlAggregations, Object[]> aggrOp
+            AggregateOperation<?, Object[]> aggrOp
+
     ) {
-        super(cluster, traits, new ArrayList<>(), input, groupSet, groupSets, aggCalls);
+        super(cluster, traits, input);
 
         this.aggrOp = aggrOp;
     }
 
-    public AggregateOperation<SqlAggregations, Object[]> aggrOp() {
+    public AggregateOperation<?, Object[]> aggrOp() {
         return aggrOp;
     }
 
     @Override
     public PlanNodeSchema schema() {
-        return OptUtils.schema(getRowType());
+        // intermediate operator, schema should not be ever needed
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Vertex visit(CreateDagVisitor visitor) {
-        return visitor.onCombine(this);
+        return visitor.onAccumulate(this);
     }
 
     @Override
-    public final Aggregate copy(
-            RelTraitSet traitSet,
-            RelNode input,
-            ImmutableBitSet groupSet,
-            List<ImmutableBitSet> groupSets,
-            List<AggregateCall> aggCalls
-    ) {
-        return new AggregateCombinePhysicalRel(getCluster(), traitSet, input, groupSet, groupSets, aggCalls, aggrOp);
+    public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
+        return new AggregateAccumulatePhysicalRel(getCluster(), traitSet, sole(inputs), aggrOp);
     }
 }

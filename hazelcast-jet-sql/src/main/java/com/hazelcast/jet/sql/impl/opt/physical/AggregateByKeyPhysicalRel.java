@@ -16,8 +16,10 @@
 
 package com.hazelcast.jet.sql.impl.opt.physical;
 
+import com.hazelcast.function.FunctionEx;
 import com.hazelcast.jet.aggregate.AggregateOperation;
 import com.hazelcast.jet.core.Vertex;
+import com.hazelcast.jet.sql.impl.aggregate.ObjectArray;
 import com.hazelcast.jet.sql.impl.aggregate.SqlAggregations;
 import com.hazelcast.jet.sql.impl.opt.OptUtils;
 import com.hazelcast.jet.sql.impl.opt.physical.visitor.CreateDagVisitor;
@@ -25,6 +27,7 @@ import com.hazelcast.sql.impl.plan.node.PlanNodeSchema;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.RelWriter;
 import org.apache.calcite.rel.core.Aggregate;
 import org.apache.calcite.rel.core.AggregateCall;
 import org.apache.calcite.util.ImmutableBitSet;
@@ -32,11 +35,11 @@ import org.apache.calcite.util.ImmutableBitSet;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRel {
+public class AggregateByKeyPhysicalRel extends Aggregate implements PhysicalRel {
 
     private final AggregateOperation<SqlAggregations, Object[]> aggrOp;
 
-    AggregateCombinePhysicalRel(
+    AggregateByKeyPhysicalRel(
             RelOptCluster cluster,
             RelTraitSet traits,
             RelNode input,
@@ -50,6 +53,10 @@ public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRe
         this.aggrOp = aggrOp;
     }
 
+    public FunctionEx<Object[], Object> groupKeyFn() {
+        return ObjectArray.projectFn(getGroupSet().toArray());
+    }
+
     public AggregateOperation<SqlAggregations, Object[]> aggrOp() {
         return aggrOp;
     }
@@ -61,7 +68,13 @@ public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRe
 
     @Override
     public Vertex visit(CreateDagVisitor visitor) {
-        return visitor.onCombine(this);
+        return visitor.onAggregateByKey(this);
+    }
+
+    @Override
+    public RelWriter explainTerms(RelWriter pw) {
+        return super.explainTerms(pw)
+                    .item("group", groupSet);
     }
 
     @Override
@@ -72,6 +85,6 @@ public class AggregateCombinePhysicalRel extends Aggregate implements PhysicalRe
             List<ImmutableBitSet> groupSets,
             List<AggregateCall> aggCalls
     ) {
-        return new AggregateCombinePhysicalRel(getCluster(), traitSet, input, groupSet, groupSets, aggCalls, aggrOp);
+        return new AggregateByKeyPhysicalRel(getCluster(), traitSet, input, groupSet, groupSets, aggCalls, aggrOp);
     }
 }

@@ -18,12 +18,12 @@ package com.hazelcast.jet.sql.impl.opt.physical;
 
 import com.hazelcast.function.SupplierEx;
 import com.hazelcast.jet.aggregate.AggregateOperation;
-import com.hazelcast.jet.sql.impl.aggregate.SqlAggregation;
-import com.hazelcast.jet.sql.impl.aggregate.SqlAggregations;
 import com.hazelcast.jet.sql.impl.aggregate.AvgSqlAggregation;
 import com.hazelcast.jet.sql.impl.aggregate.CountSqlAggregation;
 import com.hazelcast.jet.sql.impl.aggregate.MaxSqlAggregation;
 import com.hazelcast.jet.sql.impl.aggregate.MinSqlAggregation;
+import com.hazelcast.jet.sql.impl.aggregate.SqlAggregation;
+import com.hazelcast.jet.sql.impl.aggregate.SqlAggregations;
 import com.hazelcast.jet.sql.impl.aggregate.SumSqlAggregation;
 import com.hazelcast.jet.sql.impl.aggregate.ValueSqlAggregation;
 import com.hazelcast.jet.sql.impl.opt.OptUtils;
@@ -42,7 +42,6 @@ import org.apache.calcite.util.ImmutableBitSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map.Entry;
 
 import static com.hazelcast.function.FunctionEx.identity;
 import static com.hazelcast.jet.sql.impl.opt.JetConventions.LOGICAL;
@@ -73,75 +72,84 @@ final class AggregatePhysicalRule extends RelOptRule {
     }
 
     private static RelNode optimize(AggregateLogicalRel logicalAggregate, RelNode physicalInput) {
-        return logicalAggregate.getGroupSet().cardinality() == 0 && !logicalAggregate.containsDistinctCall()
-                ? toGroupCombine(logicalAggregate, physicalInput)
-                : toGroupByKeyCombine(logicalAggregate, physicalInput);
+        return logicalAggregate.getGroupSet().cardinality() == 0
+                ? toAggregate(logicalAggregate, physicalInput)
+                : toAggregateByKey(logicalAggregate, physicalInput);
     }
 
-    /**
-     * Scalar aggregate case (no GROUP BY clause nor DISTINCT aggregation, i.e. SELECT COUNT(*) FROM t).
-     * The output is a single row.
-     */
-    private static RelNode toGroupCombine(AggregateLogicalRel logicalAggregate, RelNode physicalInput) {
-        AggregateOperation<SqlAggregations, Object[]> aggregateOperation = aggregateOperation(
+    private static RelNode toAggregate(AggregateLogicalRel logicalAggregate, RelNode physicalInput) {
+        AggregateOperation<SqlAggregations, Object[]> aggrOp = aggregateOperation(
                 physicalInput.getRowType(),
                 logicalAggregate.getGroupSet(),
                 logicalAggregate.getAggCallList()
         );
 
-        RelNode rel = new AggregateGroupPhysicalRel(
-                logicalAggregate.getCluster(),
-                physicalInput.getTraitSet(),
-                physicalInput,
-                aggregateOperation
-        );
+        if (logicalAggregate.containsDistinctCall()) {
+            return new AggregatePhysicalRel(
+                    physicalInput.getCluster(),
+                    physicalInput.getTraitSet(),
+                    physicalInput,
+                    logicalAggregate.getGroupSet(),
+                    logicalAggregate.getGroupSets(),
+                    logicalAggregate.getAggCallList(),
+                    aggrOp
+            );
+        } else {
+            RelNode rel = new AggregateAccumulatePhysicalRel(
+                    physicalInput.getCluster(),
+                    physicalInput.getTraitSet(),
+                    physicalInput,
+                    aggrOp
+            );
 
-        return new AggregateCombinePhysicalRel(
-                logicalAggregate.getCluster(),
-                rel.getTraitSet(),
-                rel,
-                logicalAggregate.getGroupSet(),
-                logicalAggregate.getGroupSets(),
-                logicalAggregate.getAggCallList(),
-                o -> "ALL",
-                aggregateOperation.withCombiningAccumulateFn(identity())
-        );
+            return new AggregateCombinePhysicalRel(
+                    rel.getCluster(),
+                    rel.getTraitSet(),
+                    rel,
+                    logicalAggregate.getGroupSet(),
+                    logicalAggregate.getGroupSets(),
+                    logicalAggregate.getAggCallList(),
+                    aggrOp.withCombiningAccumulateFn(identity())
+            );
+        }
     }
 
-    /**
-     * Scalar aggregate case if GROUP BY clause is not present but a DISTINCT aggregation is.
-     * The output is a single row.
-     * <p>
-     * Vector aggregate case if GROUP BY clause is present.
-     * Possibly multiple rows in the output.
-     */
-    @SuppressWarnings("rawtypes")
-    private static RelNode toGroupByKeyCombine(AggregateLogicalRel logicalAggregate, RelNode physicalInput) {
-        AggregateOperation<SqlAggregations, Object[]> aggregateOperation = aggregateOperation(
+    private static RelNode toAggregateByKey(AggregateLogicalRel logicalAggregate, RelNode physicalInput) {
+        AggregateOperation<SqlAggregations, Object[]> aggrOp = aggregateOperation(
                 physicalInput.getRowType(),
                 logicalAggregate.getGroupSet(),
                 logicalAggregate.getAggCallList()
         );
 
-        RelNode rel = new AggregateGroupByKeyPhysicalRel(
-                logicalAggregate.getCluster(),
-                physicalInput.getTraitSet(),
-                physicalInput,
-                logicalAggregate.getGroupSet(),
-                aggregateOperation,
-                logicalAggregate.containsDistinctCall()
-        );
+        if (logicalAggregate.containsDistinctCall()) {
+            return new AggregateByKeyPhysicalRel(
+                    physicalInput.getCluster(),
+                    physicalInput.getTraitSet(),
+                    physicalInput,
+                    logicalAggregate.getGroupSet(),
+                    logicalAggregate.getGroupSets(),
+                    logicalAggregate.getAggCallList(),
+                    aggrOp
+            );
+        } else {
+            RelNode rel = new AggregateAccumulateByKeyPhysicalRel(
+                    physicalInput.getCluster(),
+                    physicalInput.getTraitSet(),
+                    physicalInput,
+                    logicalAggregate.getGroupSet(),
+                    aggrOp
+            );
 
-        return new AggregateCombinePhysicalRel(
-                logicalAggregate.getCluster(),
-                rel.getTraitSet(),
-                rel,
-                logicalAggregate.getGroupSet(),
-                logicalAggregate.getGroupSets(),
-                logicalAggregate.getAggCallList(),
-                o -> ((Entry) o).getKey(),
-                aggregateOperation.withCombiningAccumulateFn(Entry<Object, SqlAggregations>::getValue)
-        );
+            return new AggregateCombineByKeyPhysicalRel(
+                    rel.getCluster(),
+                    rel.getTraitSet(),
+                    rel,
+                    logicalAggregate.getGroupSet(),
+                    logicalAggregate.getGroupSets(),
+                    logicalAggregate.getAggCallList(),
+                    aggrOp.withCombiningAccumulateFn(identity())
+            );
+        }
     }
 
     private static AggregateOperation<SqlAggregations, Object[]> aggregateOperation(
