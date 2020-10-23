@@ -135,9 +135,6 @@ public final class ReflectionUtils {
         }
 
         Class<?> propertyClass = method.getReturnType();
-        if (findSetter(clazz, propertyName, propertyClass) == null) {
-            return null;
-        }
 
         return BiTuple.of(propertyName, propertyClass);
     }

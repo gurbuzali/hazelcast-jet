@@ -93,7 +93,8 @@ public class ReflectionUtilsTest {
     public void when_extractProperties_then_returnsMethodBasedProperties() {
         Map<String, Class<?>> properties = extractProperties(JavaProperties.class);
 
-        assertEquals(3, properties.size());
+        assertEquals(4, properties.size());
+        assertEquals(int.class, properties.get("field"));
         assertEquals(int.class, properties.get("publicField"));
         assertEquals(boolean.class, properties.get("booleanGetField"));
         assertEquals(boolean.class, properties.get("booleanIsField"));
@@ -241,6 +242,10 @@ public class ReflectionUtilsTest {
         }
 
         public static void setPublicStaticField() {
+        }
+
+        public int getField() {
+            return 0;
         }
 
         public int getPublicField() {
