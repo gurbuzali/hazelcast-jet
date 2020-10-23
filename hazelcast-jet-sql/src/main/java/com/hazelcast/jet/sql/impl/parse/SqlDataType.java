@@ -40,6 +40,6 @@ public class SqlDataType extends SqlIdentifier {
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword(QueryDataTypeUtils.toString(type));
+        writer.keyword(QueryDataTypeUtils.sqlTypeName(type));
     }
 }

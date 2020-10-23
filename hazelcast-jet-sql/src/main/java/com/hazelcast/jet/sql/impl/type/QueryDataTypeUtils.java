@@ -24,7 +24,7 @@ public final class QueryDataTypeUtils {
     private QueryDataTypeUtils() {
     }
 
-    public static String toString(QueryDataType type) {
+    public static String sqlTypeName(QueryDataType type) {
         if (type.getTypeFamily() == QueryDataTypeFamily.INTEGER) {
             return "INT";
         } else {

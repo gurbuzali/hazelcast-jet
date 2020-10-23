@@ -26,7 +26,6 @@ import com.hazelcast.sql.impl.schema.TableStatistics;
 import com.hazelcast.sql.impl.schema.map.MapTableField;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
@@ -99,10 +98,8 @@ class KafkaTable extends JetTable {
         return getFields().stream().map(TableField::getType).toArray(QueryDataType[]::new);
     }
 
-    Boolean[] hiddenFields() {
-        Boolean[] hiddenFields = new Boolean[getFields().size()];
-        Arrays.fill(hiddenFields, Boolean.FALSE);
-        return hiddenFields;
+    boolean[] hiddenFields() {
+        return new boolean[getFields().size()];
     }
 
     @Override

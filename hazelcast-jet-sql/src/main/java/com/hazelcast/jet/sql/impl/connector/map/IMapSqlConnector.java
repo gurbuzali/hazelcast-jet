@@ -21,11 +21,11 @@ import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.Vertex;
 import com.hazelcast.jet.core.processor.SinkProcessors;
-import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadata;
-import com.hazelcast.jet.sql.impl.connector.keyvalue.KvProcessors;
 import com.hazelcast.jet.sql.impl.connector.SqlConnector;
+import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadata;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataJavaResolver;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers;
+import com.hazelcast.jet.sql.impl.connector.keyvalue.KvProcessors;
 import com.hazelcast.jet.sql.impl.inject.UpsertTargetDescriptor;
 import com.hazelcast.jet.sql.impl.schema.MappingField;
 import com.hazelcast.map.impl.MapContainer;
@@ -44,6 +44,7 @@ import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static com.hazelcast.jet.core.Edge.between;
 import static com.hazelcast.sql.impl.schema.map.MapTableUtils.estimatePartitionedMapRowCount;
@@ -142,7 +143,7 @@ public class IMapSqlConnector implements SqlConnector {
         List<TableField> fields = table.getFields();
         QueryPath[] paths = fields.stream().map(field -> ((MapTableField) field).getPath()).toArray(QueryPath[]::new);
         QueryDataType[] types = fields.stream().map(TableField::getType).toArray(QueryDataType[]::new);
-        Boolean[] hiddenFields = fields.stream().map(TableField::isHidden).toArray(Boolean[]::new);
+        boolean[] hiddenFields = toBooleanArray(fields, TableField::isHidden);
 
         Vertex vStart = dag.newVertex(
                 "Project(IMap" + "[" + table.getSchemaName() + "." + table.getSqlName() + "])",
@@ -162,5 +163,17 @@ public class IMapSqlConnector implements SqlConnector {
 
         dag.edge(between(vStart, vEnd));
         return vStart;
+    }
+
+    /**
+     * Create a boolean[] from a List<T>, item `i` in the result is the result
+     * of `predicate.test(list.get(i))`.
+     */
+    private static <T> boolean[] toBooleanArray(List<T> collection, Predicate<T> predicate) {
+        boolean[] res = new boolean[collection.size()];
+        for (int i = 0, collectionSize = collection.size(); i < collectionSize; i++) {
+            res[i] = predicate.test(collection.get(i));
+        }
+        return res;
     }
 }

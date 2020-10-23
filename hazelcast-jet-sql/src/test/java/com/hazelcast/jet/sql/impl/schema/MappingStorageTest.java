@@ -42,7 +42,7 @@ public class MappingStorageTest extends SimpleTestInClusterSupport {
 
     @Test
     public void when_put_then_isPresentInValues() {
-        String name = generateRandomName();
+        String name = randomName();
 
         storage.put(name, mapping(name, "type"));
 
@@ -51,7 +51,7 @@ public class MappingStorageTest extends SimpleTestInClusterSupport {
 
     @Test
     public void when_putIfAbsent_then_doesNotOverride() {
-        String name = generateRandomName();
+        String name = randomName();
 
         assertThat(storage.putIfAbsent(name, mapping(name, "type-1"))).isTrue();
         assertThat(storage.putIfAbsent(name, mapping(name, "type-2"))).isFalse();
@@ -61,7 +61,7 @@ public class MappingStorageTest extends SimpleTestInClusterSupport {
 
     @Test
     public void when_remove_then_isNotPresentInValues() {
-        String name = generateRandomName();
+        String name = randomName();
 
         storage.put(name, mapping(name, "type"));
 
@@ -76,9 +76,5 @@ public class MappingStorageTest extends SimpleTestInClusterSupport {
 
     private static Mapping mapping(String name, String type) {
         return new Mapping(name, type, emptyList(), emptyMap());
-    }
-
-    private static String generateRandomName() {
-        return "storage_" + randomString().replace('-', '_');
     }
 }

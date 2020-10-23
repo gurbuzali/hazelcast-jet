@@ -78,6 +78,10 @@ public class MappingField implements DataSerializable {
         return (String) properties.get(EXTERNAL_NAME);
     }
 
+    public void setExternalName(String extName) {
+        properties.put(EXTERNAL_NAME, extName);
+    }
+
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeObject(properties);

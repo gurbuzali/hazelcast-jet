@@ -167,7 +167,7 @@ public class SqlPojoTest extends SqlTestSupport {
 
     @Test
     public void test_allTypes() {
-        String from = generateRandomName();
+        String from = randomName();
         AllTypesSqlConnector.create(sqlService, from);
 
         String to = createRandomTopic();
@@ -245,10 +245,6 @@ public class SqlPojoTest extends SqlTestSupport {
                         null
                 ))
         );
-    }
-
-    private static String generateRandomName() {
-        return "pojo_" + randomString().replace('-', '_');
     }
 
     private static String createRandomTopic() {

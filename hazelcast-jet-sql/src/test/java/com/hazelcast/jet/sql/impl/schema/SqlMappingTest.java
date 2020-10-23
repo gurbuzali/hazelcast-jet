@@ -44,7 +44,7 @@ public class SqlMappingTest extends SqlTestSupport {
     @Test
     public void when_mappingIsDeclared_then_itIsAvailable() {
         // given
-        String name = generateRandomName();
+        String name = randomName();
 
         // when
         SqlResult createResult = sqlService.execute(javaSerializableMapDdl(name, Integer.class, String.class));
@@ -63,7 +63,7 @@ public class SqlMappingTest extends SqlTestSupport {
     @Test
     public void when_mappingIsDeclared_then_itsDefinitionHasPrecedenceOverDiscoveredOne() {
         // given
-        String name = generateRandomName();
+        String name = randomName();
 
         sqlService.execute(javaSerializableMapDdl(name, Integer.class, Person.class));
 
@@ -72,14 +72,17 @@ public class SqlMappingTest extends SqlTestSupport {
 
         // when
         // then
+        // The column `id` exists in IdentifiedPerson class (that was used in the sample entry), but not
+        // in the Person class (that was used in the DDL). If the explicit mapping is used, we won't find it.
         assertThatThrownBy(() -> sqlService.execute("SELECT id FROM " + name))
-                .isInstanceOf(HazelcastSqlException.class);
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessageContaining("Column 'id' not found in any table");
     }
 
     @Test
     public void when_mappingIsDropped_then_itIsNotAvailable() {
         // given
-        String name = generateRandomName();
+        String name = randomName();
 
         sqlService.execute(javaSerializableMapDdl(name, Integer.class, Person.class));
 
@@ -89,13 +92,28 @@ public class SqlMappingTest extends SqlTestSupport {
         // then
         assertThat(dropResult.updateCount()).isEqualTo(0);
         assertThatThrownBy(() -> sqlService.execute("SELECT * FROM public." + name))
-                .isInstanceOf(HazelcastSqlException.class);
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessageContaining("Object '" + name + "' not found within 'hazelcast.public'");
     }
 
     @Test
     public void when_badType_then_fail() {
         assertThatThrownBy(() -> sqlService.execute("CREATE MAPPING m TYPE TooBad"))
                 .hasMessageContaining("Unknown connector type: TooBad");
+    }
+
+    @Test
+    public void when_noFieldsResolved_then_wholeValueMapped() {
+        String name = randomName();
+
+        sqlService.execute(javaSerializableMapDdl(name, Object.class, Object.class));
+
+        Person key = new Person("foo");
+        Person value = new Person("bar");
+        instance().getMap(name).put(key, value);
+
+        assertRowsAnyOrder("SELECT __key, this FROM " + name,
+                singletonList(new Row(key, value)));
     }
 
     @Test
@@ -114,9 +132,5 @@ public class SqlMappingTest extends SqlTestSupport {
         assertThatThrownBy(() -> sqlService.execute("DROP MAPPING partitioned.my_map"))
                 // TODO a better message would be "You can't delete from 'partitioned' schema", but this is good enough
                 .hasMessageContaining("Mapping does not exist: partitioned.my_map");
-    }
-
-    private static String generateRandomName() {
-        return "mapping_" + randomString().replace('-', '_');
     }
 }

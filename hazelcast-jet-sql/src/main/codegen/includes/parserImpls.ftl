@@ -120,20 +120,20 @@ QueryDataType QueryDataType() :
 }
 {
     (
-        type = NumericType()
+        type = NumericTypes()
     |
-        type = CharacterType()
+        type = CharacterTypes()
     |
-        type = DateTimeType()
+        type = DateTimeTypes()
     |
-        type = ObjectType()
+        type = ObjectTypes()
     )
     {
         return type;
     }
 }
 
-QueryDataType NumericType() :
+QueryDataType NumericTypes() :
 {
     QueryDataType type;
 }
@@ -160,20 +160,18 @@ QueryDataType NumericType() :
     }
 }
 
-QueryDataType CharacterType() :
+QueryDataType CharacterTypes() :
 {
     QueryDataType type;
 }
 {
-    (
         <VARCHAR> { type = QueryDataType.VARCHAR; }
-    )
     {
         return type;
     }
 }
 
-QueryDataType DateTimeType() :
+QueryDataType DateTimeTypes() :
 {
     QueryDataType type;
 }
@@ -195,14 +193,12 @@ QueryDataType DateTimeType() :
     }
 }
 
-QueryDataType ObjectType() :
+QueryDataType ObjectTypes() :
 {
     QueryDataType type;
 }
 {
-    (
-        <OBJECT> { type = QueryDataType.OBJECT; }
-    )
+    <OBJECT> { type = QueryDataType.OBJECT; }
     {
         return type;
     }

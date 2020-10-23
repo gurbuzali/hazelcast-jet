@@ -23,18 +23,17 @@ import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.extract.QueryPath;
 
-import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FORMAT;
 import static com.hazelcast.sql.impl.extract.QueryPath.KEY;
-import static com.hazelcast.sql.impl.extract.QueryPath.KEY_PREFIX;
 import static com.hazelcast.sql.impl.extract.QueryPath.VALUE;
 import static com.hazelcast.sql.impl.extract.QueryPath.VALUE_PREFIX;
 import static java.util.Objects.requireNonNull;
@@ -46,6 +45,9 @@ import static java.util.stream.Stream.concat;
  * multiple serialization methods.
  */
 public class KvMetadataResolvers {
+
+    // A string of characters (excluding a `.`), optionally prefixed with "__key." or "this."
+    private static final Pattern EXT_NAME_PATTERN = Pattern.compile("((" + KEY + "|" + VALUE + ")\\.)?[^.]+");
 
     private final Map<String, KvMetadataResolver> keyResolvers;
     private final Map<String, KvMetadataResolver> valueResolvers;
@@ -78,11 +80,22 @@ public class KvMetadataResolvers {
     ) {
         InternalSerializationService ss = (InternalSerializationService) nodeEngine.getSerializationService();
 
-        // validate the external name: it must be "__key[.*]" or "this[.*]"
+        // normalize and validate the names and external names
         for (MappingField field : userFields) {
+            String name = field.name();
+
+            // resolve the external name, if not specified
             String extName = field.externalName();
-            if (extName != null && !extName.equals(KEY) && !extName.equals(VALUE)
-                    && !extName.startsWith(KEY_PREFIX) && !extName.startsWith(VALUE_PREFIX)) {
+            if (extName == null) {
+                if (name.equals(KEY) || name.equals(VALUE)) {
+                    extName = name;
+                } else {
+                    extName = VALUE_PREFIX + name;
+                }
+                field.setExternalName(name);
+            }
+
+            if (!EXT_NAME_PATTERN.matcher(extName).matches()) {
                 throw QueryException.error("Invalid external name: " + extName);
             }
         }
@@ -132,7 +145,7 @@ public class KvMetadataResolvers {
     public static Map<QueryPath, MappingField> extractFields(List<MappingField> fields, boolean isKey) {
         Map<QueryPath, MappingField> fieldsByPath = new LinkedHashMap<>();
         for (MappingField field : fields) {
-            QueryPath path = resolveExternalName(field);
+            QueryPath path = QueryPath.create(field.externalName());
             if (isKey != path.isKey()) {
                 continue;
             }
@@ -141,15 +154,5 @@ public class KvMetadataResolvers {
             }
         }
         return fieldsByPath;
-    }
-
-    @Nonnull
-    private static QueryPath resolveExternalName(MappingField field) {
-        String extName = field.externalName();
-        String name = field.name();
-        if ((KEY.equals(name) || VALUE.equals(name)) && extName != null && !extName.equals(field.name())) {
-            throw QueryException.error("The column name and external name must be equal for the '" + name + "' column");
-        }
-        return QueryPath.create(extName != null ? extName : name);
     }
 }

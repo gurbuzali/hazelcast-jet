@@ -180,7 +180,7 @@ public class SqlJsonTest extends SqlTestSupport {
 
     @Test
     public void test_allTypes() {
-        String from = generateRandomName();
+        String from = randomName();
         AllTypesSqlConnector.create(sqlService, from);
 
         String to = createRandomTopic();
@@ -235,10 +235,6 @@ public class SqlJsonTest extends SqlTestSupport {
                         null
                 ))
         );
-    }
-
-    private static String generateRandomName() {
-        return "json_" + randomString().replace('-', '_');
     }
 
     private static String createRandomTopic() {

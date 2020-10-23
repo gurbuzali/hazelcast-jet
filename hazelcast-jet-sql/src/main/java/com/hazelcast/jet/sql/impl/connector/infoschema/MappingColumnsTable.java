@@ -77,7 +77,7 @@ public class MappingColumnsTable extends InfoSchemaTable {
                         field.getName(),
                         String.valueOf(i),
                         String.valueOf(true),
-                        QueryDataTypeUtils.toString(field.getType())
+                        QueryDataTypeUtils.sqlTypeName(field.getType())
                 };
                 rows.add(row);
             }
