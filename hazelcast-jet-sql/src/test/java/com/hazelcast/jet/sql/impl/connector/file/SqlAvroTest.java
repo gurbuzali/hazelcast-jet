@@ -47,7 +47,7 @@ public class SqlAvroTest extends SqlTestSupport {
 
     @Test
     public void test_nulls() {
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "nonExistingField VARCHAR"
                 + ") TYPE " + FileSqlConnector.TYPE_NAME + ' '
@@ -66,7 +66,7 @@ public class SqlAvroTest extends SqlTestSupport {
 
     @Test
     public void test_fieldsMapping() {
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "id TINYINT EXTERNAL NAME byte"
                 + ", name VARCHAR EXTERNAL NAME string"
@@ -86,7 +86,7 @@ public class SqlAvroTest extends SqlTestSupport {
 
     @Test
     public void test_allTypes() {
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "string VARCHAR"
                 + ", \"boolean\" BOOLEAN"
@@ -131,7 +131,7 @@ public class SqlAvroTest extends SqlTestSupport {
 
     @Test
     public void test_schemaDiscovery() {
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + ' '
                 + "TYPE " + FileSqlConnector.TYPE_NAME + ' '
                 + "OPTIONS ( "
@@ -219,9 +219,5 @@ public class SqlAvroTest extends SqlTestSupport {
                         true
                 ))
         );
-    }
-
-    private static String generateRandomName() {
-        return "avro_" + randomString().replace('-', '_');
     }
 }

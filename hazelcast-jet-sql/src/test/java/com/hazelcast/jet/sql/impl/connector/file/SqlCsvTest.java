@@ -47,7 +47,7 @@ public class SqlCsvTest extends SqlTestSupport {
 
     @Test
     public void test_allTypes() {
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "string VARCHAR"
                 + ", \"boolean\" BOOLEAN"
@@ -93,7 +93,7 @@ public class SqlCsvTest extends SqlTestSupport {
 
     @Test
     public void test_schemaDiscovery() {
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + ' '
                 + "TYPE " + FileSqlConnector.TYPE_NAME + ' '
                 + "OPTIONS ( "
@@ -178,9 +178,5 @@ public class SqlCsvTest extends SqlTestSupport {
                         "2020-04-15T12:23:34.200Z"
                 ))
         );
-    }
-
-    private static String generateRandomName() {
-        return "csv_" + randomString().replace('-', '_');
     }
 }

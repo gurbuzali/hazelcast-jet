@@ -77,7 +77,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_csv() throws IOException {
         store("/csv/file.csv", "1,Alice\n2,Bob");
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "id BIGINT"
                 + ", name VARCHAR"
@@ -101,7 +101,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_csvSchemaDiscovery() throws IOException {
         store("/discovered-csv/file.csv", "id,name\n1,Alice\n2,Bob");
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + ' '
                 + "TYPE " + FileSqlConnector.TYPE_NAME + ' '
                 + "OPTIONS ("
@@ -124,7 +124,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_json() throws IOException {
         store("/json/file.json", "{\"id\": 1, \"name\": \"Alice\"}\n{\"id\": 2, \"name\": \"Bob\"}");
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "id BIGINT"
                 + ", name VARCHAR"
@@ -148,7 +148,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_jsonSchemaDiscovery() throws IOException {
         store("/discovered-json/file.json", "{\"id\": 1, \"name\": \"Alice\"}\n{\"id\": 2, \"name\": \"Bob\"}");
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + ' '
                 + "TYPE " + FileSqlConnector.TYPE_NAME + ' '
                 + "OPTIONS ("
@@ -170,7 +170,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_avro() throws IOException {
         store("/avro/file.avro", Files.readAllBytes(Paths.get("src/test/resources/file.avro")));
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "id BIGINT EXTERNAL NAME long"
                 + ", name VARCHAR EXTERNAL NAME string"
@@ -191,7 +191,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_avroSchemaDiscovery() throws IOException {
         store("/discovered-avro/file.avro", Files.readAllBytes(Paths.get("src/test/resources/file.avro")));
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + ' '
                 + "TYPE " + FileSqlConnector.TYPE_NAME + ' '
                 + "OPTIONS ("
@@ -210,7 +210,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_parquet_nulls() throws IOException {
         store("/parquet-nulls/file.parquet", Files.readAllBytes(Paths.get("src/test/resources/file.parquet")));
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "nonExistingField VARCHAR"
                 + ") TYPE " + FileSqlConnector.TYPE_NAME + ' '
@@ -230,7 +230,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_parquet_fieldsMapping() throws IOException {
         store("/parquet-fields-mapping/file.parquet", Files.readAllBytes(Paths.get("src/test/resources/file.parquet")));
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "id TINYINT EXTERNAL NAME byte"
                 + ", name VARCHAR EXTERNAL NAME string"
@@ -251,7 +251,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_parquet_allTypes() throws IOException {
         store("/parquet-all-types/file.parquet", Files.readAllBytes(Paths.get("src/test/resources/file.parquet")));
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + " ("
                 + "string VARCHAR"
                 + ", \"boolean\" BOOLEAN"
@@ -297,7 +297,7 @@ public class SqlHadoopTest extends SqlTestSupport {
     public void test_parquet_schemaDiscovery() throws IOException {
         store("/parquet-schema-discovery/file.parquet", Files.readAllBytes(Paths.get("src/test/resources/file.parquet")));
 
-        String name = generateRandomName();
+        String name = randomName();
         sqlService.execute("CREATE MAPPING " + name + ' '
                 + "TYPE " + FileSqlConnector.TYPE_NAME + ' '
                 + "OPTIONS ( "
@@ -394,9 +394,5 @@ public class SqlHadoopTest extends SqlTestSupport {
         try (FSDataOutputStream output = cluster.getFileSystem().create(new Path(path))) {
             output.write(content);
         }
-    }
-
-    private static String generateRandomName() {
-        return "hadoop_" + randomString().replace('-', '_');
     }
 }

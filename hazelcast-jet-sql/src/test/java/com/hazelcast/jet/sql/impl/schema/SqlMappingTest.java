@@ -44,7 +44,7 @@ public class SqlMappingTest extends SqlTestSupport {
     @Test
     public void when_mappingIsDeclared_then_itIsAvailable() {
         // given
-        String name = generateRandomName();
+        String name = randomName();
 
         // when
         SqlResult createResult = sqlService.execute(javaSerializableMapDdl(name, Integer.class, String.class));
@@ -63,7 +63,7 @@ public class SqlMappingTest extends SqlTestSupport {
     @Test
     public void when_mappingIsDeclared_then_itsDefinitionHasPrecedenceOverDiscoveredOne() {
         // given
-        String name = generateRandomName();
+        String name = randomName();
 
         sqlService.execute(javaSerializableMapDdl(name, Integer.class, Person.class));
 
@@ -82,7 +82,7 @@ public class SqlMappingTest extends SqlTestSupport {
     @Test
     public void when_mappingIsDropped_then_itIsNotAvailable() {
         // given
-        String name = generateRandomName();
+        String name = randomName();
 
         sqlService.execute(javaSerializableMapDdl(name, Integer.class, Person.class));
 
@@ -104,7 +104,7 @@ public class SqlMappingTest extends SqlTestSupport {
 
     @Test
     public void when_noFieldsResolved_then_wholeValueMapped() {
-        String name = generateRandomName();
+        String name = randomName();
 
         sqlService.execute(javaSerializableMapDdl(name, Object.class, Object.class));
 
@@ -132,9 +132,5 @@ public class SqlMappingTest extends SqlTestSupport {
         assertThatThrownBy(() -> sqlService.execute("DROP MAPPING partitioned.my_map"))
                 // TODO a better message would be "You can't delete from 'partitioned' schema", but this is good enough
                 .hasMessageContaining("Mapping does not exist: partitioned.my_map");
-    }
-
-    private static String generateRandomName() {
-        return "mapping_" + randomString().replace('-', '_');
     }
 }
