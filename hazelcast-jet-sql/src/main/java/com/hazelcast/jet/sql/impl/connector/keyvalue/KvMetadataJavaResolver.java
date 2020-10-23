@@ -40,6 +40,7 @@ import static com.hazelcast.jet.sql.impl.connector.SqlConnector.JAVA_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.extractFields;
+import static com.hazelcast.jet.sql.impl.type.QueryDataTypeUtils.sqlTypeName;
 import static com.hazelcast.sql.impl.extract.QueryPath.KEY;
 import static com.hazelcast.sql.impl.extract.QueryPath.VALUE;
 import static java.util.Collections.singletonList;
@@ -103,8 +104,9 @@ public final class KvMetadataJavaResolver implements KvMetadataResolver {
         MappingField field = new MappingField(name, type, path.toString());
 
         for (MappingField mf : userFieldsByPath.values()) {
-            if (!field.name().equals(mf.name())) {
-                throw QueryException.error("Unmapped field: " + mf.name());
+            if (!field.externalName().equals(mf.externalName())) {
+                throw QueryException.error("The field '" + field.externalName() + "' is of type "
+                        + sqlTypeName(field.type()) + ", you can't map '" + mf.externalName() + "' too");
             }
         }
 
@@ -133,6 +135,10 @@ public final class KvMetadataJavaResolver implements KvMetadataResolver {
                 }
             }
             return new ArrayList<>(userFieldsByPath.values());
+        } else if (fieldsInClass.isEmpty()) {
+            // if we didn't find any fields in the class, map the whole value (e.g. in java.lang.Object)
+            String name = isKey ? KEY : VALUE;
+            return singletonList(new MappingField(name, QueryDataType.OBJECT, name));
         } else {
             List<MappingField> fields = new ArrayList<>();
             for (Entry<String, Class<?>> classField : fieldsInClass) {

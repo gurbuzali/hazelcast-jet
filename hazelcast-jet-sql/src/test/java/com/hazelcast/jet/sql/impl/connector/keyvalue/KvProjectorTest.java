@@ -33,7 +33,7 @@ public class KvProjectorTest {
         KvProjector projector = new KvProjector(
                 new QueryPath[]{QueryPath.KEY_PATH, QueryPath.VALUE_PATH},
                 new QueryDataType[]{QueryDataType.INT, QueryDataType.INT},
-                new Boolean[]{false, false},
+                new boolean[]{false, false},
                 new MultiplyingTarget(),
                 new MultiplyingTarget()
         );
@@ -53,7 +53,7 @@ public class KvProjectorTest {
                         QueryPath.create(QueryPath.VALUE_PREFIX + "field2")
                 },
                 new QueryDataType[]{QueryDataType.INT, QueryDataType.VARCHAR, QueryDataType.INT},
-                new Boolean[]{false, true, false},
+                new boolean[]{false, true, false},
                 new MultiplyingTarget(),
                 new MultiplyingTarget()
         );

@@ -107,24 +107,7 @@ public class KvMetadataJavaResolverTest {
                 options,
                 null
         )).isInstanceOf(QueryException.class)
-          .hasMessageContaining("Unmapped field: field");
-    }
-
-    @Test
-    @Parameters({
-            "true, __key",
-            "false, this"
-    })
-    public void when_userDeclaresPrimitiveInvalidExternalName_then_throws(boolean key, String path) {
-        Map<String, String> options = ImmutableMap.of((key ? OPTION_KEY_CLASS : OPTION_VALUE_CLASS), int.class.getName());
-
-        assertThatThrownBy(() -> INSTANCE.resolveAndValidateFields(
-                key,
-                singletonList(field(path, QueryDataType.INT, "invalid-path")),
-                options,
-                null
-        )).isInstanceOf(QueryException.class)
-          .hasMessageContaining("The column name and external name must be equal for the '" + path + "' column");
+          .hasMessageContaining("The field '" + prefix + "' is of type INT, you can't map '" + prefix + ".field' too");
     }
 
     @Test

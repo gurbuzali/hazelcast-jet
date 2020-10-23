@@ -59,7 +59,7 @@ public final class KvProcessors {
     public static ProcessorSupplier entryProjector(
             QueryPath[] paths,
             QueryDataType[] types,
-            Boolean[] hiddenFields,
+            boolean[] hiddenFields,
             UpsertTargetDescriptor keyDescriptor,
             UpsertTargetDescriptor valueDescriptor
     ) {
@@ -176,7 +176,7 @@ public final class KvProcessors {
 
         private QueryPath[] paths;
         private QueryDataType[] types;
-        private Boolean[] hiddenFields;
+        private boolean[] hiddenFields;
 
         private UpsertTargetDescriptor keyDescriptor;
         private UpsertTargetDescriptor valueDescriptor;
@@ -190,7 +190,7 @@ public final class KvProcessors {
         EntryProjectorProcessorSupplier(
                 QueryPath[] paths,
                 QueryDataType[] types,
-                Boolean[] hiddenFields,
+                boolean[] hiddenFields,
                 UpsertTargetDescriptor keyDescriptor,
                 UpsertTargetDescriptor valueDescriptor
         ) {

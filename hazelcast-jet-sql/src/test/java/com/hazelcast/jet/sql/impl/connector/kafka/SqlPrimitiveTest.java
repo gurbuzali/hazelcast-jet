@@ -380,8 +380,8 @@ public class SqlPrimitiveTest extends SqlTestSupport {
                         + '"' + OPTION_VALUE_CLASS + "\" '" + Integer.class.getName() + "',"
                         + '"' + OPTION_KEY_FORMAT + "\" '" + JAVA_FORMAT + "',"
                         + '"' + OPTION_KEY_CLASS + "\" '" + Integer.class.getName() + "'"
-                        + ")")
-        ).hasMessage("Unmapped field: field");
+                        + ")"))
+                .hasMessage("The field '" + fieldName + "' is of type INT, you can't map '" + fieldName + ".field' too");
     }
 
     private static String createRandomTopic() {

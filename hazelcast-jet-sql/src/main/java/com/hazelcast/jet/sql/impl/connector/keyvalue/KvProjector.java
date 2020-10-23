@@ -40,7 +40,7 @@ class KvProjector {
     KvProjector(
             QueryPath[] paths,
             QueryDataType[] types,
-            Boolean[] hiddenFields,
+            boolean[] hiddenFields,
             UpsertTarget keyTarget,
             UpsertTarget valueTarget
     ) {
@@ -55,7 +55,7 @@ class KvProjector {
     private static UpsertInjector[] createInjectors(
             QueryPath[] paths,
             QueryDataType[] types,
-            Boolean[] hiddenFields,
+            boolean[] hiddenFields,
             UpsertTarget keyTarget,
             UpsertTarget valueTarget
     ) {

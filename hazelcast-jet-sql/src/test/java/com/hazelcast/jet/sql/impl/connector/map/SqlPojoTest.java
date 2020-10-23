@@ -22,6 +22,7 @@ import com.hazelcast.jet.sql.impl.connector.map.model.InsuredPerson;
 import com.hazelcast.jet.sql.impl.connector.map.model.Person;
 import com.hazelcast.jet.sql.impl.connector.map.model.PersonId;
 import com.hazelcast.jet.sql.impl.connector.test.AllTypesSqlConnector;
+import com.hazelcast.sql.HazelcastSqlException;
 import com.hazelcast.sql.SqlService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,6 +50,7 @@ import static java.time.ZoneId.systemDefault;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertEquals;
 
 public class SqlPojoTest extends SqlTestSupport {
@@ -375,8 +377,34 @@ public class SqlPojoTest extends SqlTestSupport {
         assertRowsAnyOrder("SELECT * FROM " + mapName, singletonList(new Row(1, null)));
     }
 
+    @Test
+    public void test_nestedField() {
+        String mapName = randomName();
+        assertThatThrownBy(() ->
+                sqlService.execute("CREATE MAPPING " + mapName + "("
+                        + "__key INT,"
+                        + "petName VARCHAR,"
+                        + "\"owner.name\" VARCHAR) "
+                        + "TYPE " + IMapSqlConnector.TYPE_NAME
+                ))
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessageContaining("Invalid external name: this.owner.name");
+    }
+
     public static class ClassInitialValue implements Serializable {
 
         public Integer field = 42;
+    }
+
+    public static class Pet implements Serializable {
+        public String petName;
+        public Person owner;
+
+        public Pet() { }
+
+        public Pet(String petName, Person owner) {
+            this.petName = petName;
+            this.owner = owner;
+        }
     }
 }
