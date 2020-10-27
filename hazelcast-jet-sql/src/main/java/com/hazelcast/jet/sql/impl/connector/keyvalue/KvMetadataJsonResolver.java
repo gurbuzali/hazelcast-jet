@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.JSON_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.extractFields;
+import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.maybeAddDefaultField;
 
 public final class KvMetadataJsonResolver implements KvMetadataResolver {
 
@@ -76,16 +77,18 @@ public final class KvMetadataJsonResolver implements KvMetadataResolver {
             Map<String, String> options,
             InternalSerializationService serializationService
     ) {
-        Map<QueryPath, MappingField> userFieldsByPath = extractFields(resolvedFields, isKey);
+        Map<QueryPath, MappingField> externalFieldsByPath = extractFields(resolvedFields, isKey);
 
         List<TableField> fields = new ArrayList<>();
-        for (Entry<QueryPath, MappingField> entry : userFieldsByPath.entrySet()) {
+        for (Entry<QueryPath, MappingField> entry : externalFieldsByPath.entrySet()) {
             QueryPath path = entry.getKey();
             QueryDataType type = entry.getValue().type();
             String name = entry.getValue().name();
 
             fields.add(new MapTableField(name, type, false, path));
         }
+
+        maybeAddDefaultField(isKey, externalFieldsByPath, fields);
         return new KvMetadata(
                 fields,
                 JsonQueryTargetDescriptor.INSTANCE,

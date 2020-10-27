@@ -235,10 +235,7 @@ public final class OptUtils {
 
         List<QueryDataType> fieldTypes = new ArrayList<>();
         for (TableField field : table.getFields()) {
-            // support for discovered maps inserts
-            if (!field.isHidden()) {
-                fieldTypes.add(field.getType());
-            }
+            fieldTypes.add(field.getType());
         }
         return new PlanNodeSchema(fieldTypes);
     }

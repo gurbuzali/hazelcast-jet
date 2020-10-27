@@ -18,9 +18,11 @@ package com.hazelcast.jet.sql.impl.inject;
 
 import com.hazelcast.sql.impl.type.QueryDataType;
 
+import javax.annotation.Nullable;
+
 public interface UpsertTarget {
 
-    UpsertInjector createInjector(String path, QueryDataType type);
+    UpsertInjector createInjector(@Nullable String path, QueryDataType type);
 
     void init();
 

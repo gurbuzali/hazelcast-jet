@@ -40,6 +40,7 @@ import static com.hazelcast.jet.sql.impl.connector.SqlConnector.JAVA_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.extractFields;
+import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.maybeAddDefaultField;
 import static com.hazelcast.jet.sql.impl.type.QueryDataTypeUtils.sqlTypeName;
 import static com.hazelcast.sql.impl.extract.QueryPath.KEY;
 import static com.hazelcast.sql.impl.extract.QueryPath.VALUE;
@@ -212,6 +213,8 @@ public final class KvMetadataJavaResolver implements KvMetadataResolver {
                 typeNamesByPaths.put(path.getPath(), typesByNames.get(path.getPath()).getName());
             }
         }
+
+        maybeAddDefaultField(isKey, externalFieldsByPath, fields);
         return new KvMetadata(
                 fields,
                 GenericQueryTargetDescriptor.DEFAULT,

@@ -44,7 +44,6 @@ import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import static com.hazelcast.jet.core.Edge.between;
 import static com.hazelcast.sql.impl.schema.map.MapTableUtils.estimatePartitionedMapRowCount;
@@ -143,14 +142,12 @@ public class IMapSqlConnector implements SqlConnector {
         List<TableField> fields = table.getFields();
         QueryPath[] paths = fields.stream().map(field -> ((MapTableField) field).getPath()).toArray(QueryPath[]::new);
         QueryDataType[] types = fields.stream().map(TableField::getType).toArray(QueryDataType[]::new);
-        boolean[] hiddenFields = toBooleanArray(fields, TableField::isHidden);
 
         Vertex vStart = dag.newVertex(
                 "Project(IMap" + "[" + table.getSchemaName() + "." + table.getSqlName() + "])",
                 KvProcessors.entryProjector(
                         paths,
                         types,
-                        hiddenFields,
                         (UpsertTargetDescriptor) table.getKeyJetMetadata(),
                         (UpsertTargetDescriptor) table.getValueJetMetadata()
                 )
@@ -163,17 +160,5 @@ public class IMapSqlConnector implements SqlConnector {
 
         dag.edge(between(vStart, vEnd));
         return vStart;
-    }
-
-    /**
-     * Create a boolean[] from a List<T>, item `i` in the result is the result
-     * of `predicate.test(list.get(i))`.
-     */
-    private static <T> boolean[] toBooleanArray(List<T> collection, Predicate<T> predicate) {
-        boolean[] res = new boolean[collection.size()];
-        for (int i = 0, collectionSize = collection.size(); i < collectionSize; i++) {
-            res[i] = predicate.test(collection.get(i));
-        }
-        return res;
     }
 }

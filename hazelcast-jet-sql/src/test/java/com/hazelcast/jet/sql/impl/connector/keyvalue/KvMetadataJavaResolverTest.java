@@ -218,10 +218,14 @@ public class KvMetadataJavaResolverTest {
                 null
         );
         assertThat(metadata.getFields()).containsExactly(
-                key ? new MapTableField[0] :
-                        new MapTableField[] {
-                                new MapTableField("field", QueryDataType.INT, false, new QueryPath("extField", false))
-                        });
+                key
+                        ? new MapTableField[]{
+                        new MapTableField("__key", QueryDataType.OBJECT, true, QueryPath.KEY_PATH)
+                }
+                        : new MapTableField[]{
+                        new MapTableField("field", QueryDataType.INT, false, new QueryPath("extField", false)),
+                        new MapTableField("this", QueryDataType.OBJECT, true, QueryPath.VALUE_PATH)
+                });
     }
 
     @Test
@@ -260,7 +264,8 @@ public class KvMetadataJavaResolverTest {
         );
 
         assertThat(metadata.getFields()).containsExactly(
-                new MapTableField("field", QueryDataType.INT, false, QueryPath.create(prefix + ".field"))
+                new MapTableField("field", QueryDataType.INT, false, QueryPath.create(prefix + ".field")),
+                new MapTableField(prefix, QueryDataType.OBJECT, true, QueryPath.create(prefix))
         );
         assertThat(metadata.getQueryTargetDescriptor()).isEqualTo(GenericQueryTargetDescriptor.DEFAULT);
         assertThat(metadata.getUpsertTargetDescriptor())

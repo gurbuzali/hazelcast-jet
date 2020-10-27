@@ -57,7 +57,6 @@ public class KvProcessorsTest {
         ProcessorSupplier original = KvProcessors.entryProjector(
                 new QueryPath[]{QueryPath.KEY_PATH, QueryPath.VALUE_PATH},
                 new QueryDataType[]{QueryDataType.INT, QueryDataType.VARCHAR},
-                new boolean[]{false, true},
                 PrimitiveUpsertTargetDescriptor.INSTANCE,
                 PrimitiveUpsertTargetDescriptor.INSTANCE
         );

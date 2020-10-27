@@ -22,6 +22,7 @@ import com.hazelcast.sql.impl.extract.QueryPath;
 import com.hazelcast.sql.impl.type.QueryDataType;
 import org.junit.Test;
 
+import javax.annotation.Nullable;
 import java.util.Map.Entry;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +34,6 @@ public class KvProjectorTest {
         KvProjector projector = new KvProjector(
                 new QueryPath[]{QueryPath.KEY_PATH, QueryPath.VALUE_PATH},
                 new QueryDataType[]{QueryDataType.INT, QueryDataType.INT},
-                new boolean[]{false, false},
                 new MultiplyingTarget(),
                 new MultiplyingTarget()
         );
@@ -53,7 +53,6 @@ public class KvProjectorTest {
                         QueryPath.create(QueryPath.VALUE_PREFIX + "field2")
                 },
                 new QueryDataType[]{QueryDataType.INT, QueryDataType.VARCHAR, QueryDataType.INT},
-                new boolean[]{false, true, false},
                 new MultiplyingTarget(),
                 new MultiplyingTarget()
         );
@@ -73,7 +72,7 @@ public class KvProjectorTest {
         }
 
         @Override
-        public UpsertInjector createInjector(String path, QueryDataType type) {
+        public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
             return value -> this.value = value;
         }
 

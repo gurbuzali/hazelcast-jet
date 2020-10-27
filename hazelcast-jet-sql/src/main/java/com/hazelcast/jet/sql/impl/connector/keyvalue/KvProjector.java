@@ -40,7 +40,6 @@ class KvProjector {
     KvProjector(
             QueryPath[] paths,
             QueryDataType[] types,
-            boolean[] hiddenFields,
             UpsertTarget keyTarget,
             UpsertTarget valueTarget
     ) {
@@ -49,25 +48,19 @@ class KvProjector {
         this.keyTarget = keyTarget;
         this.valueTarget = valueTarget;
 
-        this.injectors = createInjectors(paths, types, hiddenFields, keyTarget, valueTarget);
+        this.injectors = createInjectors(paths, types, keyTarget, valueTarget);
     }
 
     private static UpsertInjector[] createInjectors(
             QueryPath[] paths,
             QueryDataType[] types,
-            boolean[] hiddenFields,
             UpsertTarget keyTarget,
             UpsertTarget valueTarget
     ) {
         UpsertInjector[] injectors = new UpsertInjector[paths.length];
         for (int i = 0; i < paths.length; i++) {
-            if (hiddenFields[i]) {
-                injectors[i] = DISCARDING_INJECTOR;
-            } else {
-                QueryPath path = paths[i];
-                UpsertTarget target = path.isKey() ? keyTarget : valueTarget;
-                injectors[i] = target.createInjector(path.getPath(), types[i]);
-            }
+            UpsertTarget target = paths[i].isKey() ? keyTarget : valueTarget;
+            injectors[i] = target.createInjector(paths[i].getPath(), types[i]);
         }
         return injectors;
     }

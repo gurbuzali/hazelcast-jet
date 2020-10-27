@@ -19,15 +19,15 @@ package com.hazelcast.jet.sql.impl.connector.kafka;
 import com.hazelcast.jet.core.DAG;
 import com.hazelcast.jet.core.Vertex;
 import com.hazelcast.jet.kafka.KafkaProcessors;
-import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadata;
-import com.hazelcast.jet.sql.impl.connector.keyvalue.KvProcessors;
 import com.hazelcast.jet.sql.impl.connector.SqlConnector;
+import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadata;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataAvroResolver;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataJavaResolver;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataJsonResolver;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataNullResolver;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolver;
 import com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers;
+import com.hazelcast.jet.sql.impl.connector.keyvalue.KvProcessors;
 import com.hazelcast.jet.sql.impl.schema.MappingField;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.sql.impl.expression.Expression;
@@ -189,7 +189,6 @@ public class KafkaSqlConnector implements SqlConnector {
                 KvProcessors.entryProjector(
                         table.paths(),
                         table.types(),
-                        table.hiddenFields(),
                         table.keyUpsertDescriptor(),
                         table.valueUpsertDescriptor()
                 )

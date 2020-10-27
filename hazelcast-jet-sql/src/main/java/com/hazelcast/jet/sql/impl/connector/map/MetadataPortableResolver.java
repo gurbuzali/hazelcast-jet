@@ -46,6 +46,7 @@ import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLA
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FACTORY_ID;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.PORTABLE_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.extractFields;
+import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.maybeAddDefaultField;
 import static java.lang.Integer.parseInt;
 
 final class MetadataPortableResolver implements KvMetadataResolver {
@@ -156,16 +157,18 @@ final class MetadataPortableResolver implements KvMetadataResolver {
             List<MappingField> resolvedFields,
             ClassDefinition clazz
     ) {
-        Map<QueryPath, MappingField> userFieldsByPath = extractFields(resolvedFields, isKey);
+        Map<QueryPath, MappingField> externalFieldsByPath = extractFields(resolvedFields, isKey);
 
         List<TableField> fields = new ArrayList<>();
-        for (Entry<QueryPath, MappingField> entry : userFieldsByPath.entrySet()) {
+        for (Entry<QueryPath, MappingField> entry : externalFieldsByPath.entrySet()) {
             QueryPath path = entry.getKey();
             QueryDataType type = entry.getValue().type();
             String name = entry.getValue().name();
 
             fields.add(new MapTableField(name, type, false, path));
         }
+
+        maybeAddDefaultField(isKey, externalFieldsByPath, fields);
         return new KvMetadata(
                 fields,
                 GenericQueryTargetDescriptor.DEFAULT,
