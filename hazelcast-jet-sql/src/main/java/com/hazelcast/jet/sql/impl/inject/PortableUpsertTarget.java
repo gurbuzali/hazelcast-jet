@@ -65,6 +65,14 @@ class PortableUpsertTarget implements UpsertTarget {
 
     @Override
     public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
+        if (path == null) {
+            return value -> {
+                if (value != null) {
+                    throw QueryException.error("Writing to top-level fields not supported");
+                }
+            };
+        }
+
         int fieldIndex = classDefinition.hasField(path) ? classDefinition.getField(path).getIndex() : -1;
         return value -> {
             if (fieldIndex == -1 && value != null) {

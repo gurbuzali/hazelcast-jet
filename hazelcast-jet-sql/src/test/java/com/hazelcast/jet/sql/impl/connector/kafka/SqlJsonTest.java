@@ -19,6 +19,7 @@ package com.hazelcast.jet.sql.impl.connector.kafka;
 import com.hazelcast.jet.kafka.impl.KafkaTestSupport;
 import com.hazelcast.jet.sql.SqlTestSupport;
 import com.hazelcast.jet.sql.impl.connector.test.AllTypesSqlConnector;
+import com.hazelcast.sql.HazelcastSqlException;
 import com.hazelcast.sql.SqlService;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.connect.json.JsonDeserializer;
@@ -42,6 +43,7 @@ import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FOR
 import static java.time.ZoneOffset.UTC;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class SqlJsonTest extends SqlTestSupport {
 
@@ -235,6 +237,31 @@ public class SqlJsonTest extends SqlTestSupport {
                         null
                 ))
         );
+    }
+
+    @Test
+    public void when_explicitTopLevelField_then_fail_key() {
+        when_explicitTopLevelField_then_fail("__key", "this");
+    }
+
+    @Test
+    public void when_explicitTopLevelField_then_fail_this() {
+        when_explicitTopLevelField_then_fail("this", "__key");
+    }
+
+    public void when_explicitTopLevelField_then_fail(String field, String otherField) {
+        String name = randomName();
+        assertThatThrownBy(() ->
+                sqlService.execute("CREATE MAPPING " + name + " ("
+                        + field + " VARCHAR"
+                        + ", f VARCHAR EXTERNAL NAME \"" + otherField + ".f\""
+                        + ") TYPE " + KafkaSqlConnector.TYPE_NAME + ' '
+                        + "OPTIONS ("
+                        + '"' + OPTION_KEY_FORMAT + "\" '" + JSON_FORMAT + '\''
+                        + ", \"" + OPTION_VALUE_FORMAT + "\" '" + JSON_FORMAT + '\''
+                        + ")"))
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessage("Invalid external name: " + field);
     }
 
     private static String createRandomTopic() {

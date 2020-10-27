@@ -23,6 +23,7 @@ import com.hazelcast.sql.impl.calcite.schema.HazelcastTable;
 import com.hazelcast.sql.impl.extract.QueryPath;
 import com.hazelcast.sql.impl.schema.TableField;
 import com.hazelcast.sql.impl.schema.map.MapTableField;
+import com.hazelcast.sql.impl.type.QueryDataTypeFamily;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.sql.SqlIdentifier;
@@ -109,24 +110,15 @@ public class SqlExtendedInsert extends SqlInsert {
                                                  .map(f -> (MapTableField) f)
                                                  .collect(Collectors.toMap(MapTableField::getName, f -> f));
 
-        boolean topLevelKeyTarget = false;
-        boolean topLevelValueTarget = false;
         for (SqlNode fieldNode : getTargetColumnList()) {
             TableField field = fieldsMap.get(((SqlIdentifier) fieldNode).getSimple());
             if (field instanceof MapTableField) {
                 QueryPath path = ((MapTableField) field).getPath();
-                if (path.getPath() == null) {
-                    if (path.isKey()) {
-                        topLevelKeyTarget = true;
-                    } else {
-                        topLevelValueTarget = true;
-                    }
+                if (path.getPath() == null
+                        && field.getType().getTypeFamily() == QueryDataTypeFamily.OBJECT) {
+                    throw QueryException.error("Writing to top-level fields of type OBJECT not supported");
                 }
             }
-        }
-        if (topLevelKeyTarget && hasSomeMappedField(table.getTarget().getFields(), true)
-                || topLevelValueTarget && hasSomeMappedField(table.getTarget().getFields(), false)) {
-            throw QueryException.error("Both a top-level field and its nested field found in the target field list");
         }
 
         SqlConnector connector = getJetSqlConnector(table.getTarget());
@@ -139,22 +131,6 @@ public class SqlExtendedInsert extends SqlInsert {
                 throw validator.newValidationError(this, RESOURCE.insertIntoNotSupported(connector.typeName()));
             }
         }
-    }
-
-    /**
-     * Returns true, if `fields` contains some field that is not a top-level
-     * field and belongs to the key or value (based on `isKey`).
-     */
-    private boolean hasSomeMappedField(List<TableField> fields, boolean isKey) {
-        for (TableField f : fields) {
-            if (f instanceof MapTableField) {
-                QueryPath path = ((MapTableField) f).getPath();
-                if (path.isKey() == isKey && path.getPath() != null) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private boolean isSink() {

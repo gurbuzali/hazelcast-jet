@@ -20,6 +20,7 @@ import com.hazelcast.instance.impl.HazelcastInstanceImpl;
 import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.serialization.impl.InternalGenericRecord;
+import com.hazelcast.internal.serialization.impl.portable.PortableGenericRecord;
 import com.hazelcast.internal.serialization.impl.portable.PortableGenericRecordBuilder;
 import com.hazelcast.jet.sql.SqlTestSupport;
 import com.hazelcast.map.impl.MapService;
@@ -28,6 +29,8 @@ import com.hazelcast.map.impl.record.Record;
 import com.hazelcast.nio.serialization.ClassDefinition;
 import com.hazelcast.nio.serialization.ClassDefinitionBuilder;
 import com.hazelcast.spi.impl.NodeEngine;
+import com.hazelcast.sql.HazelcastSqlException;
+import com.hazelcast.sql.SqlRow;
 import com.hazelcast.sql.SqlService;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,14 +42,16 @@ import java.util.Map.Entry;
 import java.util.Objects;
 
 import static com.hazelcast.jet.Util.entry;
+import static com.hazelcast.jet.sql.impl.connector.SqlConnector.JAVA_FORMAT;
+import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS_ID;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS_VERSION;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_FACTORY_ID;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_FORMAT;
-import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLASS_ID;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLASS_VERSION;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FACTORY_ID;
+import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.PORTABLE_FORMAT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -54,6 +59,9 @@ import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class SqlPortableTest extends SqlTestSupport {
 
@@ -411,6 +419,54 @@ public class SqlPortableTest extends SqlTestSupport {
                        , null
                 ))
         );
+    }
+
+    @Test
+    public void test_writingToTopLevelWhileNestedFieldMapped_explicit() {
+        test_writingToTopLevelWhileNestedFieldMapped(true);
+    }
+
+    @Test
+    public void test_writingToTopLevelWhileNestedFieldMapped_implicit() {
+        test_writingToTopLevelWhileNestedFieldMapped(false);
+    }
+
+    public void test_writingToTopLevelWhileNestedFieldMapped(boolean explicit) {
+        String mapName = randomName();
+        sqlService.execute("CREATE MAPPING " + mapName + "(" +
+                "__key INT," +
+                (explicit ? "this OBJECT," : "") +
+                "name VARCHAR)" +
+                " TYPE " + IMapSqlConnector.TYPE_NAME + "\n"
+                + "OPTIONS (\n"
+                + '"' + OPTION_KEY_FORMAT + "\" '" + JAVA_FORMAT + "'\n"
+                + ", \"" + OPTION_KEY_CLASS + "\" '" + Integer.class.getName() + "'\n"
+                + ", \"" + OPTION_VALUE_FORMAT + "\" '" + PORTABLE_FORMAT + "'\n"
+                + ", \"" + OPTION_VALUE_FACTORY_ID + "\" '" + PERSON_FACTORY_ID + "'\n"
+                + ", \"" + OPTION_VALUE_CLASS_ID + "\" '" + PERSON_CLASS_ID + "'\n"
+                + ", \"" + OPTION_VALUE_CLASS_VERSION + "\" '" + PERSON_CLASS_VERSION + "'\n"
+                + ")");
+
+        if (explicit) {
+            assertThatThrownBy(() ->
+                    sqlService.execute("SINK INTO " + mapName + " VALUES(1, null, 'foo')"))
+                    .isInstanceOf(HazelcastSqlException.class)
+                    .hasMessageContaining("Writing to top-level fields of type OBJECT not supported");
+        }
+
+        assertThatThrownBy(() ->
+                sqlService.execute("SINK INTO " + mapName + "(__key, this) VALUES(1, null)"))
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessageContaining("Writing to top-level fields of type OBJECT not supported");
+
+        sqlService.execute("SINK INTO " + mapName + (explicit ? "(__key, name)" : "") + " VALUES (1, 'foo')");
+
+        Iterator<SqlRow> resultIter = sqlService.execute("SELECT __key, this, name FROM " + mapName).iterator();
+        SqlRow row = resultIter.next();
+        assertEquals(1, (int) row.getObject(0));
+        assertInstanceOf(PortableGenericRecord.class, row.getObject(1));
+        assertEquals("foo", row.getObject(2));
+        assertFalse(resultIter.hasNext());
     }
 
     @SuppressWarnings({"OptionalGetWithoutIsPresent", "unchecked", "rawtypes"})

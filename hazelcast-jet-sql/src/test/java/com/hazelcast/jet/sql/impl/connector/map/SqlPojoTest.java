@@ -378,6 +378,48 @@ public class SqlPojoTest extends SqlTestSupport {
     }
 
     @Test
+    public void test_writingToTopLevelWhileNestedFieldMapped_explicit() {
+        test_writingToTopLevel(true);
+    }
+
+    @Test
+    public void test_writingToTopLevelWhileNestedFieldMapped_implicit() {
+        test_writingToTopLevel(false);
+    }
+
+    public void test_writingToTopLevel(boolean explicit) {
+        String mapName = randomName();
+        sqlService.execute("CREATE MAPPING " + mapName + "(" +
+                "__key INT," +
+                (explicit ? "this OBJECT," : "") +
+                "name VARCHAR)" +
+                " TYPE " + IMapSqlConnector.TYPE_NAME + "\n"
+                + "OPTIONS (\n"
+                + '"' + OPTION_KEY_FORMAT + "\" '" + JAVA_FORMAT + "',\n"
+                + '"' + OPTION_KEY_CLASS + "\" '" + Integer.class.getName() + "',\n"
+                + '"' + OPTION_VALUE_FORMAT + "\" '" + JAVA_FORMAT + "',\n"
+                + '"' + OPTION_VALUE_CLASS + "\" '" + Person.class.getName() + "'\n"
+                + ")");
+
+        if (explicit) {
+            assertThatThrownBy(() ->
+                    sqlService.execute("SINK INTO " + mapName + " VALUES(1, null, 'foo')"))
+                    .isInstanceOf(HazelcastSqlException.class)
+                    .hasMessageContaining("Writing to top-level fields of type OBJECT not supported");
+        }
+
+        assertThatThrownBy(() ->
+                sqlService.execute("SINK INTO " + mapName + "(__key, this) VALUES(1, null)"))
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessageContaining("Writing to top-level fields of type OBJECT not supported");
+
+        sqlService.execute("SINK INTO " + mapName + (explicit ? "(__key, name)" : "") + " VALUES (1, 'foo')");
+
+        assertRowsAnyOrder("SELECT __key, this, name FROM " + mapName,
+                singletonList(new Row(1, new Person(null, "foo"), "foo")));
+    }
+
+    @Test
     public void test_nestedField() {
         String mapName = randomName();
         assertThatThrownBy(() ->
