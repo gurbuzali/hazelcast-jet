@@ -72,12 +72,6 @@ public class AggregateByKeyPhysicalRel extends Aggregate implements PhysicalRel 
     }
 
     @Override
-    public RelWriter explainTerms(RelWriter pw) {
-        return super.explainTerms(pw)
-                    .item("group", groupSet);
-    }
-
-    @Override
     public final Aggregate copy(
             RelTraitSet traitSet,
             RelNode input,
