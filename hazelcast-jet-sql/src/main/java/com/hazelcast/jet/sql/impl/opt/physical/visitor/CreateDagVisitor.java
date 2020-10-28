@@ -82,7 +82,7 @@ public class CreateDagVisitor {
                 (ctx, states) -> {
                 },
                 ConsumerEx.noop(),
-                1,
+                0,
                 true)
         );
     }

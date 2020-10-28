@@ -20,6 +20,7 @@ import com.hazelcast.jet.Traverser;
 import com.hazelcast.jet.Traversers;
 import com.hazelcast.jet.core.AbstractProcessor;
 import com.hazelcast.jet.core.DAG;
+import com.hazelcast.jet.core.ProcessorSupplier;
 import com.hazelcast.jet.core.Vertex;
 import com.hazelcast.jet.sql.impl.connector.SqlConnector;
 import com.hazelcast.jet.sql.impl.expression.ExpressionUtil;
@@ -33,7 +34,7 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
-import static com.hazelcast.jet.core.ProcessorMetaSupplier.preferLocalParallelismOne;
+import static com.hazelcast.jet.core.ProcessorMetaSupplier.forceTotalParallelismOne;
 
 /**
  * A connector for tables in the {@code information_schema}.
@@ -95,7 +96,10 @@ final class InfoSchemaConnector implements SqlConnector {
 
         List<Object[]> rows = ExpressionUtil.evaluate(predicate, projection, table.rows());
 
-        return dag.newVertex(table.toString(), preferLocalParallelismOne(() -> new StaticSourceP(rows)));
+        return dag.newVertex(
+                table.toString(),
+                forceTotalParallelismOne(ProcessorSupplier.of(() -> new StaticSourceP(rows)))
+        );
     }
 
     private static final class StaticSourceP extends AbstractProcessor {
