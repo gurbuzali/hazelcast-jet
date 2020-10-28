@@ -22,7 +22,11 @@ import com.hazelcast.jet.sql.impl.schema.MappingField;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.extract.QueryPath;
+import com.hazelcast.sql.impl.schema.TableField;
+import com.hazelcast.sql.impl.schema.map.MapTableField;
+import com.hazelcast.sql.impl.type.QueryDataType;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -154,5 +158,19 @@ public class KvMetadataResolvers {
             }
         }
         return fieldsByPath;
+    }
+
+    public static void maybeAddDefaultField(
+            boolean isKey,
+            @Nonnull Map<QueryPath, MappingField> externalFieldsByPath,
+            @Nonnull List<TableField> tableFields
+    ) {
+        // Add the default `__key` or `this` field as hidden, if not present in the external
+        // names (the path), nor in the field names
+        QueryPath path = isKey ? QueryPath.KEY_PATH : QueryPath.VALUE_PATH;
+        if (!externalFieldsByPath.containsKey(path)
+                && tableFields.stream().noneMatch(f -> f.getName().equals(path.toString()))) {
+            tableFields.add(new MapTableField(path.toString(), QueryDataType.OBJECT, true, path));
+        }
     }
 }

@@ -21,6 +21,7 @@ import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -46,7 +47,15 @@ class PojoUpsertTarget implements UpsertTarget {
     }
 
     @Override
-    public UpsertInjector createInjector(String path, QueryDataType type) {
+    public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
+        if (path == null) {
+            return value -> {
+                if (value != null) {
+                    throw QueryException.error("Writing to top-level fields not supported");
+                }
+            };
+        }
+
         Method method = ReflectionUtils.findSetter(clazz, path, typesByPaths.get(path));
         if (method != null) {
             return createMethodInjector(method);

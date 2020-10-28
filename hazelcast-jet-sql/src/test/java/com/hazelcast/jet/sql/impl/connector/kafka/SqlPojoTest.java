@@ -28,7 +28,10 @@ import com.hazelcast.jet.sql.impl.connector.kafka.model.PersonIdDeserializer;
 import com.hazelcast.jet.sql.impl.connector.kafka.model.PersonIdSerializer;
 import com.hazelcast.jet.sql.impl.connector.kafka.model.PersonSerializer;
 import com.hazelcast.jet.sql.impl.connector.test.AllTypesSqlConnector;
+import com.hazelcast.sql.HazelcastSqlException;
 import com.hazelcast.sql.SqlService;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -49,6 +52,7 @@ import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLA
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_FORMAT;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class SqlPojoTest extends SqlTestSupport {
 
@@ -245,6 +249,54 @@ public class SqlPojoTest extends SqlTestSupport {
                         null
                 ))
         );
+    }
+
+    @Test
+    public void test_writingToTopLevelWhileNestedFieldMapped_explicit() {
+        test_writingToTopLevel(true);
+    }
+
+    @Test
+    public void test_writingToTopLevelWhileNestedFieldMapped_implicit() {
+        test_writingToTopLevel(false);
+    }
+
+    public void test_writingToTopLevel(boolean explicit) {
+        String topicName = createRandomTopic();
+        sqlService.execute("CREATE MAPPING " + topicName + "(" +
+                "__key INT," +
+                (explicit ? "this OBJECT," : "") +
+                "name VARCHAR)" +
+                " TYPE " + KafkaSqlConnector.TYPE_NAME + "\n"
+                + "OPTIONS (\n"
+                + '"' + OPTION_KEY_FORMAT + "\" '" + JAVA_FORMAT + "',\n"
+                + '"' + OPTION_KEY_CLASS + "\" '" + Integer.class.getName() + "',\n"
+                + '"' + OPTION_VALUE_FORMAT + "\" '" + JAVA_FORMAT + "',\n"
+                + '"' + OPTION_VALUE_CLASS + "\" '" + Person.class.getName() + "'\n"
+                + ", \"bootstrap.servers\" '" + kafkaTestSupport.getBrokerConnectionString() + '\''
+                + ", \"key.serializer\" '" + IntegerSerializer.class.getCanonicalName() + '\''
+                + ", \"key.deserializer\" '" + IntegerDeserializer.class.getCanonicalName() + '\''
+                + ", \"value.serializer\" '" + PersonSerializer.class.getCanonicalName() + '\''
+                + ", \"value.deserializer\" '" + PersonDeserializer.class.getCanonicalName() + '\''
+                + ", \"auto.offset.reset\" 'earliest'"
+                + ")");
+
+        if (explicit) {
+            assertThatThrownBy(() ->
+                    sqlService.execute("SINK INTO " + topicName + " VALUES(1, null, 'foo')"))
+                    .isInstanceOf(HazelcastSqlException.class)
+                    .hasMessageContaining("Writing to top-level fields of type OBJECT not supported");
+        }
+
+        assertThatThrownBy(() ->
+                sqlService.execute("SINK INTO " + topicName + "(__key, this) VALUES(1, null)"))
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessageContaining("Writing to top-level fields of type OBJECT not supported");
+
+        sqlService.execute("SINK INTO " + topicName + (explicit ? "(__key, name)" : "") + " VALUES (1, 'foo')");
+
+        assertRowsEventuallyInAnyOrder("SELECT __key, this, name FROM " + topicName,
+                singletonList(new Row(1, new Person(null, "foo"), "foo")));
     }
 
     private static String createRandomTopic() {

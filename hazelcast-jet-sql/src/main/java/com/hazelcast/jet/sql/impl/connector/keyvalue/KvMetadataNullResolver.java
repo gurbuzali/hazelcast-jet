@@ -29,6 +29,7 @@ import com.hazelcast.sql.impl.extract.QueryTarget;
 import com.hazelcast.sql.impl.extract.QueryTargetDescriptor;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -105,7 +106,7 @@ public class KvMetadataNullResolver implements KvMetadataResolver {
 
     private static class NullUpsertTarget implements UpsertTarget {
         @Override
-        public UpsertInjector createInjector(String path, QueryDataType type) {
+        public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
             throw new IllegalStateException("NullQueryTarget doesn't support this operation");
         }
 

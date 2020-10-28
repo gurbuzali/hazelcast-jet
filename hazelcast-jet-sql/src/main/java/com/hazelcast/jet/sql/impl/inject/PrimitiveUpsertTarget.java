@@ -18,6 +18,7 @@ package com.hazelcast.jet.sql.impl.inject;
 
 import com.hazelcast.sql.impl.type.QueryDataType;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 @NotThreadSafe
@@ -29,7 +30,8 @@ class PrimitiveUpsertTarget implements UpsertTarget {
     }
 
     @Override
-    public UpsertInjector createInjector(String path, QueryDataType type) {
+    public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
+        assert path == null : "path=" + path;
         return value -> object = value;
     }
 

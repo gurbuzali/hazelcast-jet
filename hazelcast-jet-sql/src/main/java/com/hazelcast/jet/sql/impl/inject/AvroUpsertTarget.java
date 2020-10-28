@@ -23,6 +23,7 @@ import org.apache.avro.generic.GenericContainer;
 import org.apache.avro.generic.GenericData.Record;
 import org.apache.avro.generic.GenericRecordBuilder;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 @NotThreadSafe
@@ -37,7 +38,7 @@ class AvroUpsertTarget implements UpsertTarget {
     }
 
     @Override
-    public UpsertInjector createInjector(String path, QueryDataType type) {
+    public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
         switch (type.getTypeFamily()) {
             case TINYINT:
                 return value -> record.set(path, value == null ? null : ((Byte) value).intValue());
@@ -64,6 +65,14 @@ class AvroUpsertTarget implements UpsertTarget {
     }
 
     private UpsertInjector createObjectInjector(String path) {
+        if (path == null) {
+            return value -> {
+                if (value != null) {
+                    throw QueryException.error("Writing to top-level fields not supported");
+                }
+            };
+        }
+
         return value -> {
             if (value == null) {
                 record.set(path, null);

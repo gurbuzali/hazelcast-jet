@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 @NotThreadSafe
@@ -36,7 +37,15 @@ class JsonUpsertTarget implements UpsertTarget {
 
     @Override
     @SuppressWarnings("checkstyle:ReturnCount")
-    public UpsertInjector createInjector(String path, QueryDataType type) {
+    public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
+        if (path == null) {
+            return value -> {
+                if (value != null) {
+                    throw QueryException.error("Writing to top-level fields not supported");
+                }
+            };
+        }
+
         switch (type.getTypeFamily()) {
             case BOOLEAN:
                 return value -> json.put(path, (Boolean) value);

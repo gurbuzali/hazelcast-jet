@@ -59,11 +59,10 @@ public final class KvProcessors {
     public static ProcessorSupplier entryProjector(
             QueryPath[] paths,
             QueryDataType[] types,
-            boolean[] hiddenFields,
             UpsertTargetDescriptor keyDescriptor,
             UpsertTargetDescriptor valueDescriptor
     ) {
-        return new EntryProjectorProcessorSupplier(paths, types, hiddenFields, keyDescriptor, valueDescriptor);
+        return new EntryProjectorProcessorSupplier(paths, types, keyDescriptor, valueDescriptor);
     }
 
     @SuppressFBWarnings(
@@ -176,7 +175,6 @@ public final class KvProcessors {
 
         private QueryPath[] paths;
         private QueryDataType[] types;
-        private boolean[] hiddenFields;
 
         private UpsertTargetDescriptor keyDescriptor;
         private UpsertTargetDescriptor valueDescriptor;
@@ -190,13 +188,11 @@ public final class KvProcessors {
         EntryProjectorProcessorSupplier(
                 QueryPath[] paths,
                 QueryDataType[] types,
-                boolean[] hiddenFields,
                 UpsertTargetDescriptor keyDescriptor,
                 UpsertTargetDescriptor valueDescriptor
         ) {
             this.paths = paths;
             this.types = types;
-            this.hiddenFields = hiddenFields;
 
             this.keyDescriptor = keyDescriptor;
             this.valueDescriptor = valueDescriptor;
@@ -216,7 +212,6 @@ public final class KvProcessors {
                 KvProjector projector = new KvProjector(
                         paths,
                         types,
-                        hiddenFields,
                         keyDescriptor.create(serializationService),
                         valueDescriptor.create(serializationService)
                 );
@@ -239,7 +234,6 @@ public final class KvProcessors {
             for (QueryDataType type : types) {
                 out.writeObject(type);
             }
-            out.writeObject(hiddenFields);
             out.writeObject(keyDescriptor);
             out.writeObject(valueDescriptor);
         }
@@ -254,7 +248,6 @@ public final class KvProcessors {
             for (int i = 0; i < types.length; i++) {
                 types[i] = in.readObject();
             }
-            hiddenFields = in.readObject();
             keyDescriptor = in.readObject();
             valueDescriptor = in.readObject();
         }

@@ -21,6 +21,7 @@ import com.hazelcast.internal.nio.Bits;
 import com.hazelcast.jet.kafka.impl.KafkaTestSupport;
 import com.hazelcast.jet.sql.SqlTestSupport;
 import com.hazelcast.jet.sql.impl.connector.test.AllTypesSqlConnector;
+import com.hazelcast.sql.HazelcastSqlException;
 import com.hazelcast.sql.SqlService;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
@@ -349,6 +350,31 @@ public class SqlAvroTest extends SqlTestSupport {
                         + "TYPE Kafka "
                         + "OPTIONS (valueFormat 'avro')"))
                 .hasMessage("Column list is required for Avro format");
+    }
+
+    @Test
+    public void when_explicitTopLevelField_then_fail_key() {
+        when_explicitTopLevelField_then_fail("__key", "this");
+    }
+
+    @Test
+    public void when_explicitTopLevelField_then_fail_this() {
+        when_explicitTopLevelField_then_fail("this", "__key");
+    }
+
+    public void when_explicitTopLevelField_then_fail(String field, String otherField) {
+        String name = randomName();
+        assertThatThrownBy(() ->
+                sqlService.execute("CREATE MAPPING " + name + " ("
+                        + field + " VARCHAR"
+                        + ", f VARCHAR EXTERNAL NAME \"" + otherField + ".f\""
+                        + ") TYPE " + KafkaSqlConnector.TYPE_NAME + ' '
+                        + "OPTIONS ("
+                        + '"' + OPTION_KEY_FORMAT + "\" '" + AVRO_FORMAT + '\''
+                        + ", \"" + OPTION_VALUE_FORMAT + "\" '" + AVRO_FORMAT + '\''
+                        + ")"))
+                .isInstanceOf(HazelcastSqlException.class)
+                .hasMessage("Cannot use the '" + field + "' field with Avro serialization");
     }
 
     private static String createRandomTopic() {

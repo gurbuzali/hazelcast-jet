@@ -238,7 +238,8 @@ public class MetadataPortableResolverTest {
         );
 
         assertThat(metadata.getFields()).containsExactly(
-                new MapTableField("field", QueryDataType.INT, false, QueryPath.create(prefix + ".field"))
+                new MapTableField("field", QueryDataType.INT, false, QueryPath.create(prefix + ".field")),
+                new MapTableField(prefix, QueryDataType.OBJECT, true, QueryPath.create(prefix))
         );
         assertThat(metadata.getQueryTargetDescriptor()).isEqualTo(GenericQueryTargetDescriptor.DEFAULT);
         assertThat(metadata.getUpsertTargetDescriptor())

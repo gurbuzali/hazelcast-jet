@@ -25,6 +25,7 @@ import com.hazelcast.nio.serialization.GenericRecord;
 import com.hazelcast.sql.impl.QueryException;
 import com.hazelcast.sql.impl.type.QueryDataType;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Arrays;
 
@@ -63,7 +64,15 @@ class PortableUpsertTarget implements UpsertTarget {
     }
 
     @Override
-    public UpsertInjector createInjector(String path, QueryDataType type) {
+    public UpsertInjector createInjector(@Nullable String path, QueryDataType type) {
+        if (path == null) {
+            return value -> {
+                if (value != null) {
+                    throw QueryException.error("Writing to top-level fields not supported");
+                }
+            };
+        }
+
         int fieldIndex = classDefinition.hasField(path) ? classDefinition.getField(path).getIndex() : -1;
         return value -> {
             if (fieldIndex == -1 && value != null) {

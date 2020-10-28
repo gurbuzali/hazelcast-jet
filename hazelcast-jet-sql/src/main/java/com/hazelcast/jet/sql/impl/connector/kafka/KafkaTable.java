@@ -98,10 +98,6 @@ class KafkaTable extends JetTable {
         return getFields().stream().map(TableField::getType).toArray(QueryDataType[]::new);
     }
 
-    boolean[] hiddenFields() {
-        return new boolean[getFields().size()];
-    }
-
     @Override
     public String toString() {
         return "Kafka[" + getSchemaName() + "." + getSqlName() + "]";

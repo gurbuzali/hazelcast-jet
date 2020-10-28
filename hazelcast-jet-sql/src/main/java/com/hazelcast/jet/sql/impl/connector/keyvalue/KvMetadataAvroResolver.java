@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.AVRO_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.extractFields;
+import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.maybeAddDefaultField;
 
 public final class KvMetadataAvroResolver implements KvMetadataResolver {
 
@@ -83,16 +84,18 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
             Map<String, String> options,
             InternalSerializationService serializationService
     ) {
-        Map<QueryPath, MappingField> userFieldsByPath = extractFields(resolvedFields, isKey);
+        Map<QueryPath, MappingField> externalFieldsByPath = extractFields(resolvedFields, isKey);
 
         List<TableField> fields = new ArrayList<>();
-        for (Entry<QueryPath, MappingField> entry : userFieldsByPath.entrySet()) {
+        for (Entry<QueryPath, MappingField> entry : externalFieldsByPath.entrySet()) {
             QueryPath path = entry.getKey();
             QueryDataType type = entry.getValue().type();
             String name = entry.getValue().name();
 
             fields.add(new MapTableField(name, type, false, path));
         }
+
+        maybeAddDefaultField(isKey, externalFieldsByPath, fields);
         return new KvMetadata(
                 fields,
                 AvroQueryTargetDescriptor.INSTANCE,
@@ -106,32 +109,36 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
 
         FieldAssembler<Schema> schema = SchemaBuilder.record("jet.sql").fields();
         for (int i = 0; i < fields.size(); i++) {
+            String path = paths[i].getPath();
+            if (path == null) {
+                continue;
+            }
             QueryDataType type = types[i];
             switch (type.getTypeFamily()) {
                 case BOOLEAN:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf().nullType().and().booleanType().endUnion()
                                    .nullDefault();
                     break;
                 case TINYINT:
                 case SMALLINT:
                 case INTEGER:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf().nullType().and().intType().endUnion()
                                    .nullDefault();
                     break;
                 case BIGINT:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf().nullType().and().longType().endUnion()
                                    .nullDefault();
                     break;
                 case REAL:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf().nullType().and().floatType().endUnion()
                                    .nullDefault();
                     break;
                 case DOUBLE:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf().nullType().and().doubleType().endUnion()
                                    .nullDefault();
                     break;
@@ -141,12 +148,12 @@ public final class KvMetadataAvroResolver implements KvMetadataResolver {
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_TIME_ZONE:
                 case VARCHAR:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf().nullType().and().stringType().endUnion()
                                    .nullDefault();
                     break;
                 case OBJECT:
-                    schema = schema.name(paths[i].getPath()).type()
+                    schema = schema.name(path).type()
                                    .unionOf()
                                    .nullType()
                                    .and().booleanType()

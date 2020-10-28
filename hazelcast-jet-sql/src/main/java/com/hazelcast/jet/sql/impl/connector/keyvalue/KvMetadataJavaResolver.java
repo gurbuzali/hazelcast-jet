@@ -40,6 +40,7 @@ import static com.hazelcast.jet.sql.impl.connector.SqlConnector.JAVA_FORMAT;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_KEY_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.SqlConnector.OPTION_VALUE_CLASS;
 import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.extractFields;
+import static com.hazelcast.jet.sql.impl.connector.keyvalue.KvMetadataResolvers.maybeAddDefaultField;
 import static com.hazelcast.jet.sql.impl.type.QueryDataTypeUtils.sqlTypeName;
 import static com.hazelcast.sql.impl.extract.QueryPath.KEY;
 import static com.hazelcast.sql.impl.extract.QueryPath.VALUE;
@@ -169,16 +170,16 @@ public final class KvMetadataJavaResolver implements KvMetadataResolver {
             Class<?> clazz
     ) {
         QueryDataType type = QueryDataTypeUtils.resolveTypeForClass(clazz);
+        Map<QueryPath, MappingField> externalFieldsByPath = extractFields(resolvedFields, isKey);
+
         if (type != QueryDataType.OBJECT) {
-            return resolvePrimitiveMetadata(isKey, resolvedFields);
+            return resolvePrimitiveMetadata(isKey, externalFieldsByPath);
         } else {
-            return resolveObjectMetadata(isKey, resolvedFields, clazz);
+            return resolveObjectMetadata(isKey, externalFieldsByPath, clazz);
         }
     }
 
-    private KvMetadata resolvePrimitiveMetadata(boolean isKey, List<MappingField> resolvedFields) {
-        Map<QueryPath, MappingField> externalFieldsByPath = extractFields(resolvedFields, isKey);
-
+    private KvMetadata resolvePrimitiveMetadata(boolean isKey, Map<QueryPath, MappingField> externalFieldsByPath) {
         QueryPath path = isKey ? QueryPath.KEY_PATH : QueryPath.VALUE_PATH;
         MappingField mappingField = externalFieldsByPath.get(path);
 
@@ -193,11 +194,9 @@ public final class KvMetadataJavaResolver implements KvMetadataResolver {
 
     private KvMetadata resolveObjectMetadata(
             boolean isKey,
-            List<MappingField> resolvedFields,
+            Map<QueryPath, MappingField> externalFieldsByPath,
             Class<?> clazz
     ) {
-        Map<QueryPath, MappingField> externalFieldsByPath = extractFields(resolvedFields, isKey);
-
         Map<String, Class<?>> typesByNames = ReflectionUtils.extractProperties(clazz);
 
         List<TableField> fields = new ArrayList<>();
@@ -212,6 +211,8 @@ public final class KvMetadataJavaResolver implements KvMetadataResolver {
                 typeNamesByPaths.put(path.getPath(), typesByNames.get(path.getPath()).getName());
             }
         }
+
+        maybeAddDefaultField(isKey, externalFieldsByPath, fields);
         return new KvMetadata(
                 fields,
                 GenericQueryTargetDescriptor.DEFAULT,
