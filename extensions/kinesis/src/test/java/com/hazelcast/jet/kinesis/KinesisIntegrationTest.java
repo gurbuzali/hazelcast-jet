@@ -15,7 +15,6 @@
  */
 package com.hazelcast.jet.kinesis;
 
-import com.amazonaws.SDKGlobalConfiguration;
 import com.amazonaws.services.kinesis.AmazonKinesisAsync;
 import com.amazonaws.services.kinesis.model.CreateStreamRequest;
 import com.amazonaws.services.kinesis.model.PutRecordsRequest;
@@ -62,9 +61,7 @@ public class KinesisIntegrationTest extends SimpleTestInClusterSupport {
 
     @BeforeClass
     public static void beforeClass() {
-        System.setProperty(SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY, "true");
-        //todo: force jackson versions to what we use (2.11.x) and have the resulting issue
-        // fixed by Localstack
+//        System.setProperty(SDKGlobalConfiguration.AWS_CBOR_DISABLE_SYSTEM_PROPERTY, "true");
 
         initialize(MEMBER_COUNT, null);
     }
